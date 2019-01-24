@@ -8,11 +8,11 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import utils
-import qianliyan_v2 as cv
+import clair as cv
 
 def Prepare(args):
     utils.setup_environment()
-    m = cv.Qianliyan()
+    m = cv.Clair()
     m.init()
 
     m.restore_parameters(args.chkpnt_fn)
@@ -105,9 +105,6 @@ def ParseArgs():
 
     parser.add_argument('--chkpnt_fn', type=str, default = None,
             help="Input a checkpoint for testing or continue training")
-
-    parser.add_argument('--slim', type=param.str2bool, nargs='?', const=True, default = False,
-            help="Train using the slim version of Clairvoyante, default: False")
 
     args = parser.parse_args()
 

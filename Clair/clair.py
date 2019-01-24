@@ -20,7 +20,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 
 
-class Qianliyan(object):
+class Clair(object):
     """
     Modification of Clairvoyante v3
 
@@ -124,7 +124,7 @@ class Qianliyan(object):
             tensor_transform_function=lambda X, Y, phase: (X, Y)
         )
 
-        print("This is Qianliyan")
+        print("This is Clair")
 
         # Getting parameters from the param.py file
         params_from_file = param.get_model_parameters()
@@ -383,9 +383,9 @@ class Qianliyan(object):
                 self.X_flattened_2D_transposed = tf.transpose(
                     self.X_flattened_2D, [1, 0, 2], name="X_flattened_2D_transposed")
 
-                is_gpu_available = len(Qianliyan.get_available_gpus()) > 0
+                is_gpu_available = len(Clair.get_available_gpus()) > 0
                 print("is_gpu_available:", is_gpu_available)
-                self.LSTM1, self.LSTM1_state = Qianliyan.adaptive_LSTM_layer(
+                self.LSTM1, self.LSTM1_state = Clair.adaptive_LSTM_layer(
                     inputs=self.X_flattened_2D_transposed,
                     num_units=self.LSTM1_num_units,
                     name="LSTM1",
@@ -402,7 +402,7 @@ class Qianliyan(object):
                     name="LSTM1_dropout",
                     seed=param.OPERATION_SEED
                 )
-                self.LSTM2, _ = Qianliyan.adaptive_LSTM_layer(
+                self.LSTM2, _ = Clair.adaptive_LSTM_layer(
                     inputs=self.LSTM1_dropout,
                     num_units=self.LSTM2_num_units,
                     name="LSTM2",
@@ -421,7 +421,7 @@ class Qianliyan(object):
                 self.LSTM2_transposed = tf.transpose(self.LSTM2_dropout, [1, 0, 2], name="LSTM2_transposed")
 
                 # Slice dense layer 2
-                self.L2 = Qianliyan.slice_dense_layer(
+                self.L2 = Clair.slice_dense_layer(
                     inputs=self.LSTM2_transposed,
                     units=self.L2_num_units,
                     slice_dimension=2,
@@ -521,28 +521,28 @@ class Qianliyan(object):
                 # Cross Entropy loss
                 Y_variant_type_str = "Y_variant_type"
 
-                self.Y_base_change_cross_entropy = Qianliyan.weighted_cross_entropy(
+                self.Y_base_change_cross_entropy = Clair.weighted_cross_entropy(
                     softmax_prediction=self.Y_base_change,
                     labels=Y_base_change_label,
                     weights=self.output_base_change_entropy_weights_placeholder,
                     epsilon=self.epsilon,
                     name="Y_base_change_cross_entropy"
                 )
-                self.Y_zygosity_cross_entropy = Qianliyan.weighted_cross_entropy(
+                self.Y_zygosity_cross_entropy = Clair.weighted_cross_entropy(
                     softmax_prediction=self.Y_zygosity,
                     labels=Y_zygosity_label,
                     weights=self.output_zygosity_entropy_weights_placeholder,
                     epsilon=self.epsilon,
                     name="Y_zygosity_cross_entropy"
                 )
-                self.Y_variant_type_cross_entropy = Qianliyan.weighted_cross_entropy(
+                self.Y_variant_type_cross_entropy = Clair.weighted_cross_entropy(
                     softmax_prediction=self.Y_variant_type,
                     labels=Y_variant_type_label,
                     weights=self.output_variant_type_entropy_weights_placeholder,
                     epsilon=self.epsilon,
                     name=Y_variant_type_str + "_cross_entropy"
                 )
-                self.Y_indel_length_entropy = Qianliyan.weighted_cross_entropy(
+                self.Y_indel_length_entropy = Clair.weighted_cross_entropy(
                     softmax_prediction=self.Y_indel_length,
                     labels=Y_indel_length_label,
                     weights=self.output_indel_length_entropy_weights_placeholder,
@@ -702,7 +702,7 @@ class Qianliyan(object):
             if last_first:
                 rolled_tensor = np.rollaxis(tensor, -1)
             recursion_text += sparator
-            processed = [Qianliyan.recursive_process_tensor(subtensor, apply_function, recursion_text + str(i), target_ndim=target_ndim, last_first=last_first, *args, **kwargs)
+            processed = [Clair.recursive_process_tensor(subtensor, apply_function, recursion_text + str(i), target_ndim=target_ndim, last_first=last_first, *args, **kwargs)
                          for i, subtensor in enumerate(rolled_tensor)]
             return [item for sublist in processed for item in sublist]
 
@@ -938,7 +938,7 @@ class Qianliyan(object):
         for v in variable_list:
             variable_value = self.session.run(v)
             result_string_list.append(v.name)
-            result_string_list.append(Qianliyan.pretty_print_np_tensor(variable_value) + '\n')
+            result_string_list.append(Clair.pretty_print_np_tensor(variable_value) + '\n')
         return '\n'.join(result_string_list)
 
     @staticmethod
@@ -954,12 +954,12 @@ class Qianliyan(object):
         elif tensor.ndim == 2:
             return_list = []
             for row in tensor:
-                return_list.append(Qianliyan.pretty_print_np_tensor(row, element_separator=element_separator))
+                return_list.append(Clair.pretty_print_np_tensor(row, element_separator=element_separator))
             return '\n'.join(return_list)
         else:
             return_list = []
             for sub_tensor in tensor:
-                return_list.append('[\n' + Qianliyan.pretty_print_np_tensor(sub_tensor,
+                return_list.append('[\n' + Clair.pretty_print_np_tensor(sub_tensor,
                                                                             element_separator=element_separator) + '\n]')
             return '\n'.join(return_list)
 
@@ -1018,8 +1018,7 @@ class FunctionCallConsumer(multiprocessing.Process):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Qianliyan (Variant caller)")
+    parser = argparse.ArgumentParser(description="Clair (Variant caller)")
 
     parser.add_argument('-v', '--variables', type=str, default=None,
                         help="Print variables matching the regular expression. default: %(default)s")
@@ -1036,7 +1035,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.variables is not None:
-        q = Qianliyan()
+        q = Clair()
         q.init()
         if args.restore_model is not None:
             q.restore_parameters(os.path.abspath(args.restore_model))

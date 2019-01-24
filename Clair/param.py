@@ -18,13 +18,11 @@ learningRateDecay = 0.1
 maxLearningRateSwitch = 4
 trainingDatasetPercentage = 0.9
 
-# Clairvoyante v3 specific
+# Clair specific
 l2RegularizationLambda = 0.005
 l2RegularizationLambdaDecay = 1
 dropoutRateFC4 = 0.5
 dropoutRateFC5 = 0.0
-
-# Clairvoyante v2 specific
 dropoutRate = 0.05
 
 # random seed (None to make it random for every run)

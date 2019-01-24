@@ -182,10 +182,10 @@ def Run(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-            description="Call variants using a trained Clairvoyante model and a BAM file" )
+            description="Call variants using a trained Clair model and a BAM file" )
 
     parser.add_argument('--chkpnt_fn', type=str, default = None,
-            help="Input a Clairvoyante model")
+            help="Input a Clair model")
 
     parser.add_argument('--ref_fn', type=str, default="ref.fa",
             help="Reference fasta file input, default: %(default)s")
@@ -231,15 +231,6 @@ if __name__ == "__main__":
 
     parser.add_argument('--pypy', type=str, default="pypy",
             help="Path to the 'pypy', default: %(default)s")
-
-    parser.add_argument('--v3', type=param.str2bool, nargs='?', const=True, default = True,
-            help="Use Clairvoyante version 3")
-
-    parser.add_argument('--v2', type=param.str2bool, nargs='?', const=True, default = False,
-            help="Use Clairvoyante version 2")
-
-    parser.add_argument('--slim', type=param.str2bool, nargs='?', const=True, default = False,
-            help="Train using the slim version of Clairvoyante, optional")
 
     parser.add_argument('--threads', type=int, default = None,
             help="Number of threads, optional")

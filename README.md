@@ -1,4 +1,4 @@
-# QLY - A deep neural network based variant caller
+# Clair - A deep neural network based variant caller
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 Contact: Ruibang Luo
 Email: rbluo@cs.hku.hk
@@ -8,7 +8,7 @@ Email: rbluo@cs.hku.hk
 ## Installation
 ```shell
 git clone --depth=1 https://github.com/HKU-BAL/QLY.git
-cd QLY
+cd Clair
 curl http://www.bio8.cs.hku.hk/trainedModels.tbz | tar -jxf -
 ```
 
@@ -33,13 +33,13 @@ To check the version of Tensorflow you have installed:
 python -c 'import tensorflow as tf; print(tf.__version__)'
 ```
 
-To do variant calling using trained models, CPU will suffice. QLY uses all available CPU cores by default in `call_var.py`, use 4 threads by default in `callVarBam.py`, and can be controlled using the parameter `--threads`. To train a new model, a high-end GPU along with the GPU version of Tensorflow is needed. To install the GPU version of tensorflow:
+To do variant calling using trained models, CPU will suffice. Clair uses all available CPU cores by default in `call_var.py`, use 4 threads by default in `callVarBam.py`, and can be controlled using the parameter `--threads`. To train a new model, a high-end GPU along with the GPU version of Tensorflow is needed. To install the GPU version of tensorflow:
 
 ```shell
 pip install tensorflow-gpu
 ```
 
-QLY was written in Python2 (tested on Python 2.7.10 in Linux and Python 2.7.13 in MacOS). It can be translated to Python3 using "2to3" just like other projects.
+Clair was written in Python2 (tested on Python 2.7.10 in Linux and Python 2.7.13 in MacOS). It can be translated to Python3 using "2to3" just like other projects.
 
 ### Performance of GPUs in model training
 Equiptment | Seconds per Epoch per 11M Variant Tensors |
@@ -107,7 +107,7 @@ tar -xf training.tar
 
 ```shell
 cd training
-python ../QLY/callVarBam.py \
+python ../Clair/callVarBam.py \
        --chkpnt_fn ../trainedModels/fullv3-illumina-novoalign-hg001+hg002-hg38/learningRate1e-3.epoch500 \
        --bam_fn ../testingData/chr21/chr21.bam \
        --ref_fn ../testingData/chr21/chr21.fa \
@@ -121,7 +121,7 @@ less chr21_calls.vcf
 
 ```shell
 cd training
-python ../QLY/call_var.py --chkpnt_fn ../trainedModels/fullv3-illumina-novoalign-hg001+hg002-hg38/learningRate1e-3.epoch500 --tensor_fn tensor_can_chr21 --call_fn tensor_can_chr21.vcf
+python ../Clair/call_var.py --chkpnt_fn ../trainedModels/fullv3-illumina-novoalign-hg001+hg002-hg38/learningRate1e-3.epoch500 --tensor_fn tensor_can_chr21 --call_fn tensor_can_chr21.vcf
 less tensor_can_chr21.vcf
 ```
 
@@ -136,11 +136,11 @@ less tensor_can_chr21.vcf
 | Reference Genome | `GRCh38_full_analysis_set_plus_decoy_hla.fa` |
 | BED for where to call variants | `GRCh38_high_confidence_interval.bed` |
 
-* If no BED file was provided, QLY will call variants on the whole genome
+* If no BED file was provided, Clair will call variants on the whole genome
 
 ### Commands
 ```shell
-python QLY/callVarBamParallel.py \
+python Clair/callVarBamParallel.py \
        --chkpnt_fn trainedModels/fullv3-illumina-novoalign-hg001+hg002-hg38/learningRate1e-3.epoch500 \
        --ref_fn GRCh38_full_analysis_set_plus_decoy_hla.fa \
        --bam_fn GIAB_v3.2.2_Illumina_50x_GRCh38_HG001.bam \
@@ -158,13 +158,13 @@ vcfcat hg001*.vcf | vcfstreamsort | bgziptabix hg001.vcf.gz
 
 * `parallel -j4` will run 4 commands in parallel. Each command using at most `--tensorflowThreads 4` threads. `vcfcat`, `vcfstreamsort` and `bgziptabix` are a part of **vcflib**.
 * If you don't have `parallel` installed on your computer, try `awk '{print "\""$0"\""}' commands.sh | xargs -P4 -L1 sh -c`.
-* `CUDA_VISIBLE_DEVICES=""` makes GPUs invisible to QLY so it will use CPU only. Please notice that unless you want to run `commands.sh` in serial, you cannot use GPU because one running copy of QLY will occupy all available memory of a GPU. While the bottleneck of `callVarBam.py` is at the CPU only `CreateTensor.py` script, the effect of GPU accelerate is insignificant (roughly about 15% faster). But if you have multiple GPU cards in your system, and you want to utilize them in variant calling, you may want split the `commands.sh` in to parts, and run the parts by firstly `export CUDA_VISIBLE_DEVICES="$i"`, where `$i` is an integer from 0 identifying the seqeunce of the GPU to be used.
+* `CUDA_VISIBLE_DEVICES=""` makes GPUs invisible to Clair so it will use CPU only. Please notice that unless you want to run `commands.sh` in serial, you cannot use GPU because one running copy of Clair will occupy all available memory of a GPU. While the bottleneck of `callVarBam.py` is at the CPU only `CreateTensor.py` script, the effect of GPU accelerate is insignificant (roughly about 15% faster). But if you have multiple GPU cards in your system, and you want to utilize them in variant calling, you may want split the `commands.sh` in to parts, and run the parts by firstly `export CUDA_VISIBLE_DEVICES="$i"`, where `$i` is an integer from 0 identifying the seqeunce of the GPU to be used.
 
 ***
 
 ## VCF Output Format
-`QLY/call_var.py` outputs variants in VCF format with version 4.1 specifications.
-QLY can predict the exact length of insertions and deletions shorter than or equal to 4bp. For insertions and deletions with a length between 5bp to 15bp, callVar guesses the length from input tensors. The indels with guessed length are denoted with a `LENGUESS` info tag. Although the guessed indel length might be incorrect, users can still benchmark QLY's sensitivity by matching the indel positions to other callsets. For indels longer than 15bp, `call_var.py` outputs them as SV without providing an alternative allele. To fit into a different usage scenario, QLY allows users to extend its model easily to support exact length prediction on longer indels by adding categories to the model output. However, this requires additional training data on the new categories. Users can also increase the length limit from where an indel is outputted as a SV by increasing the parameter flankingBaseNum from 16bp to a higher value. This extends the flanking bases to be considered with a candidate variant.
+`Clair/call_var.py` outputs variants in VCF format with version 4.1 specifications.
+Clair can predict the exact length of insertions and deletions shorter than or equal to 4bp. For insertions and deletions with a length between 5bp to 15bp, callVar guesses the length from input tensors. The indels with guessed length are denoted with a `LENGUESS` info tag. Although the guessed indel length might be incorrect, users can still benchmark Clair's sensitivity by matching the indel positions to other callsets. For indels longer than 15bp, `call_var.py` outputs them as SV without providing an alternative allele. To fit into a different usage scenario, Clair allows users to extend its model easily to support exact length prediction on longer indels by adding categories to the model output. However, this requires additional training data on the new categories. Users can also increase the length limit from where an indel is outputted as a SV by increasing the parameter flankingBaseNum from 16bp to a higher value. This extends the flanking bases to be considered with a candidate variant.
 
 ***
 
@@ -174,7 +174,7 @@ QLY can predict the exact length of insertions and deletions shorter than or equ
 ```
 wget 'http://www.bio8.cs.hku.hk/testingData.tar'
 tar -xf testingData.tar
-cd QLY
+cd Clair
 python demoRun.py
 ```
 
@@ -197,7 +197,7 @@ python demoRun.py
 `CombineMultipleDatasetsForTraining.py`| A helper script for combining multiple datasets. You still need to run PairWithNonVariants.py and tensor2Bin.py after this script.
 
 
-`QLY/` | Model Training and Variant Caller Scripts. Scripts in this folder are NOT compatible with `pypy`. Please run with `python`.
+`Clair/` | Model Training and Variant Caller Scripts. Scripts in this folder are NOT compatible with `pypy`. Please run with `python`.
 --- | ---
 `call_var.py `| Call variants using candidate variant tensors.
 `callVarBam.py` | Call variants directly from a BAM file.
@@ -243,7 +243,7 @@ The testing dataset 'testingData.tar' includes:
 ## Limitations
 ### On variants with two alternative alleles (GT: 1/2)
 
-QLY network can only output one of the two possible alternative alleles at a position. We will further extend the network to support genome variants with two alternative alleles.
+Clair network can only output one of the two possible alternative alleles at a position. We will further extend the network to support genome variants with two alternative alleles.
 
 ### On training
 

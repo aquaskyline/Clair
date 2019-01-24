@@ -10,7 +10,7 @@ from threading import Thread
 
 import param
 import utils
-import qianliyan_v2 as cv
+import clair as cv
 import evaluate
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
@@ -309,7 +309,7 @@ if __name__ == "__main__":
     #     ),
     # ]
 
-    parser = argparse.ArgumentParser(description="Train Clairvoyante")
+    parser = argparse.ArgumentParser(description="Train Clair")
 
     # binary file path
     parser.add_argument('--bin_fn', type=str, default=None,
@@ -344,12 +344,6 @@ if __name__ == "__main__":
     parser.add_argument('--olog_dir', type=str, default=None,
                         help="Directory for tensorboard log outputs, optional")
 
-    parser.add_argument('--v3', type=param.str2bool, nargs='?', const=True,
-                        default=True, help="Use Clairvoyante version 3")
-
-    parser.add_argument('--v2', type=param.str2bool, nargs='?', const=True, default=False,
-                        help="Use Clairvoyante version 2")
-
     args = parser.parse_args()
 
     if len(sys.argv[1:]) == 0:
@@ -359,7 +353,7 @@ if __name__ == "__main__":
     # initialize
     logging.info("[INFO] Initializing")
     utils.setup_environment()
-    m = cv.Qianliyan()
+    m = cv.Clair()
     m.init()
 
     dataset_info = utils.dataset_info_from(

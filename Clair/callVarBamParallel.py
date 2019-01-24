@@ -99,10 +99,10 @@ def Run(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-            description="Create commands for calling variants in parallel using a trained Clairvoyante model and a BAM file" )
+            description="Create commands for calling variants in parallel using a trained Clair model and a BAM file" )
 
     parser.add_argument('--chkpnt_fn', type=str, default = None,
-            help="Input a Clairvoyante model")
+            help="Input a Clair model")
 
     parser.add_argument('--ref_fn', type=str, default="ref.fa",
             help="Reference fasta file input, default: %(default)s")

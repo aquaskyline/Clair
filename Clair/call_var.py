@@ -9,7 +9,7 @@ from threading import Thread
 from math import log, e
 
 import utils
-import qianliyan_v2 as cv
+import clair as cv
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 num2base = dict(zip((0, 1, 2, 3), "ACGT"))
@@ -23,7 +23,6 @@ inferred_indel_length_minimum_allele_frequency = 0.125
 
 
 def Run(args):
-    # create a Clairvoyante
     logging.info("Loading model ...")
 
     utils.SetupEnv()
@@ -34,8 +33,7 @@ def Run(args):
     else:
         param.NUM_THREADS = args.threads
 
-    # REPLACED FOR QIANLIYAN
-    m = cv.Qianliyan()
+    m = cv.Clair()
     m.init()
     m.restore_parameters(os.path.abspath(args.chkpnt_fn))
 
@@ -373,7 +371,7 @@ def Test(args, m, utils):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description="Call variants using a trained Clairvoyante model and tensors of candididate variants")
+        description="Call variants using a trained Clair model and tensors of candididate variants")
 
     parser.add_argument('--tensor_fn', type=str, default="PIPE",
                         help="Tensor input, use PIPE for standard input")
@@ -392,15 +390,6 @@ if __name__ == "__main__":
 
     parser.add_argument('--threads', type=int, default=None,
                         help="Number of threads, optional")
-
-    parser.add_argument('--v3', type=param.str2bool, nargs='?', const=True, default=True,
-                        help="Use Clairvoyante version 3")
-
-    parser.add_argument('--v2', type=param.str2bool, nargs='?', const=True, default=False,
-                        help="Use Clairvoyante version 2")
-
-    parser.add_argument('--slim', type=param.str2bool, nargs='?', const=True, default=False,
-                        help="Train using the slim version of Clairvoyante, optional")
 
     parser.add_argument('--activation_only', action='store_true',
                         help="Output activation only, no prediction")
