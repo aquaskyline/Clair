@@ -8,7 +8,7 @@ import numpy as np
 from threading import Thread
 from math import log, e
 
-import utils_qly as utils
+import utils
 import qianliyan_v2 as cv
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)

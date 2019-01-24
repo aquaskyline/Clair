@@ -20,7 +20,7 @@ class InstancesClass(object):
         self.CTInstance.poll()
         self.CVInstance.poll()
 
-c = InstancesClass();
+c = InstancesClass()
 
 
 def CheckRtCode(signum, frame):
@@ -28,15 +28,15 @@ def CheckRtCode(signum, frame):
     #print >> sys.stderr, c.EVCInstance.returncode, c.CTInstance.returncode, c.CVInstance.returncode
     if c.EVCInstance.returncode != None and c.EVCInstance.returncode != 0:
         c.CTInstance.kill(); c.CVInstance.kill()
-        sys.exit("ExtractVariantCandidates.py or GetTruth.py exited with exceptions. Exiting...");
+        sys.exit("ExtractVariantCandidates.py or GetTruth.py exited with exceptions. Exiting...")
 
     if c.CTInstance.returncode != None and c.CTInstance.returncode != 0:
         c.EVCInstance.kill(); c.CVInstance.kill()
-        sys.exit("CreateTensors.py exited with exceptions. Exiting...");
+        sys.exit("CreateTensors.py exited with exceptions. Exiting...")
 
     if c.CVInstance.returncode != None and c.CVInstance.returncode != 0:
         c.EVCInstance.kill(); c.CTInstance.kill()
-        sys.exit("callVar.py exited with exceptions. Exiting...");
+        sys.exit("call_var.py exited with exceptions. Exiting...")
 
     if c.EVCInstance.returncode == None or c.CTInstance.returncode == None or c.CVInstance.returncode == None:
         signal.alarm(5)
@@ -60,7 +60,7 @@ def Run(args):
     EVCBin = CheckFileExist(basedir + "/../dataPrepScripts/ExtractVariantCandidates.py")
     GTBin = CheckFileExist(basedir + "/../dataPrepScripts/GetTruth.py")
     CTBin = CheckFileExist(basedir + "/../dataPrepScripts/CreateTensor.py")
-    CVBin = CheckFileExist(basedir + "/callVar.py")
+    CVBin = CheckFileExist(basedir + "/call_var.py")
     pypyBin = CheckCmdExist(args.pypy)
     samtoolsBin = CheckCmdExist(args.samtools)
     chkpnt_fn = CheckFileExist(args.chkpnt_fn, sfx=".meta")
@@ -94,10 +94,10 @@ def Run(args):
     maxCpus = multiprocessing.cpu_count()
     if args.threads == None: numCpus = multiprocessing.cpu_count()
     else: numCpus = args.threads if args.threads < multiprocessing.cpu_count() else multiprocessing.cpu_count()
-    cpuSet = ",".join(str(x) for x in random.sample(xrange(0, maxCpus), numCpus))
+    _cpuSet = ",".join(str(x) for x in random.sample(xrange(0, maxCpus), numCpus))
     taskSet = "taskset -c %s"
     try:
-        subprocess.check_output("which %s" % (taskset), shell=True)
+        subprocess.check_output("which %s" % (taskSet), shell=True)
     except:
         taskSet = ""
 
@@ -153,12 +153,12 @@ def Run(args):
         try:
             c.CTInstance.terminate()
         except Exception as e:
-            print(e.message)    
+            print(e.message)
         try:
             c.EVCInstance.terminate()
         except Exception as e:
             print(e.message)
-        
+
         raise KeyboardInterrupt
     except Exception as e:
         print("Exception received when waiting at CallVarBam, terminating all scripts.")
@@ -170,7 +170,7 @@ def Run(args):
         try:
             c.CTInstance.terminate()
         except Exception as e:
-            print(e.message)    
+            print(e.message)
         try:
             c.EVCInstance.terminate()
         except Exception as e:
@@ -252,16 +252,16 @@ if __name__ == "__main__":
 
     parser.add_argument('--max_plot', type=int, default = 10,
             help="The maximum number of plots output, negative number means no limit (plot all), default: %(default)s")
-    
+
     parser.add_argument('--log_path', type=str, default = "logs",
             help="The path for tensorflow logging, default: %(default)s")
-    
+
     parser.add_argument('-p', '--parallel_level', type=int, default = 2,
             help="The level of parallelism in plotting (currently available: 0, 2), default: %(default)s")
-    
+
     parser.add_argument('--fast_plotting', action='store_true',
             help="Enable fast plotting.")
-    
+
     parser.add_argument('-w', '--workers', type=int, default = 8,
             help="The number of workers in plotting, default: %(default)s")
 

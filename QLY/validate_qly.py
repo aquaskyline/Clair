@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 import param
-import utils_qly as utils
+import utils
 import qianliyan_v2 as cv
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)

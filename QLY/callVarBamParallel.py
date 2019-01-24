@@ -83,13 +83,13 @@ def Run(args):
                 if chromName in tree:
                     if len(tree[chromName].search(start, end)) != 0:
                         if args.activation_only:
-                            print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --bed_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s --activation_only --log_path %s --max_plot %d --parallel_level %d --workers %d %s" % 
+                            print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --bed_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s --activation_only --log_path %s --max_plot %d --parallel_level %d --workers %d %s" %
                                 (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, bed_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, args.log_path, args.max_plot, args.parallel_level, args.workers, "--fast_plotting" if args.fast_plotting else "") )
                         else:
                             print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --bed_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s" % (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, bed_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge) )
             else:
                 if args.activation_only:
-                    print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s --activation_only --log_path %s --max_plot %d --parallel_level %d --workers %d %s" % 
+                    print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s --activation_only --log_path %s --max_plot %d --parallel_level %d --workers %d %s" %
                         (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, args.log_path, args.max_plot, args.parallel_level, args.workers, "--fast_plotting" if args.fast_plotting else "") )
                 else:
                     print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s" % (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge) )
@@ -154,16 +154,16 @@ if __name__ == "__main__":
 
     parser.add_argument('--max_plot', type=int, default = 10,
             help="The maximum number of plots output, negative number means no limit (plot all), default: %(default)s")
-    
+
     parser.add_argument('--log_path', type=str, default = "logs",
             help="The path for tensorflow logging, default: %(default)s")
-    
+
     parser.add_argument('-p', '--parallel_level', type=int, default = 2,
             help="The level of parallelism in plotting (currently available: 0, 2), default: %(default)s")
-    
+
     parser.add_argument('-w', '--workers', type=int, default = 8,
             help="The number of workers in plotting, default: %(default)s")
-    
+
     parser.add_argument('--fast_plotting', action='store_true',
             help="Enable fast plotting.")
 

@@ -33,7 +33,7 @@ To check the version of Tensorflow you have installed:
 python -c 'import tensorflow as tf; print(tf.__version__)'
 ```
 
-To do variant calling using trained models, CPU will suffice. QLY uses all available CPU cores by default in `call_var_qly.py`, use 4 threads by default in `qly-callVarBam.py`, and can be controlled using the parameter `--threads`. To train a new model, a high-end GPU along with the GPU version of Tensorflow is needed. To install the GPU version of tensorflow:
+To do variant calling using trained models, CPU will suffice. QLY uses all available CPU cores by default in `call_var.py`, use 4 threads by default in `callVarBam.py`, and can be controlled using the parameter `--threads`. To train a new model, a high-end GPU along with the GPU version of Tensorflow is needed. To install the GPU version of tensorflow:
 
 ```shell
 pip install tensorflow-gpu
@@ -56,7 +56,7 @@ Intel Xeon E5-2680 v4 28-core | 2900
 
 
 ### Speed up with PyPy
-Without a change to the code, using PyPy python interpreter on some tensorflow independent modules such as `qly-dataPrepScripts/ExtractVariantCandidates.py` and `qly-dataPrepScripts/CreateTensor.py` gives a 5-10 times speed up. Pypy python interpreter can be installed by apt-get, yum, Homebrew, MacPorts, etc. If you have no root access to your system, the official website of Pypy provides a portable binary distribution for Linux. Following is a rundown extracted from Pypy's website (pypy-5.8 in this case) on how to install the binaries.
+Without a change to the code, using PyPy python interpreter on some tensorflow independent modules such as `dataPrepScripts/ExtractVariantCandidates.py` and `dataPrepScripts/CreateTensor.py` gives a 5-10 times speed up. Pypy python interpreter can be installed by apt-get, yum, Homebrew, MacPorts, etc. If you have no root access to your system, the official website of Pypy provides a portable binary distribution for Linux. Following is a rundown extracted from Pypy's website (pypy-5.8 in this case) on how to install the binaries.
 
 ```shell
 wget https://bitbucket.org/squeaky/portable-pypy/downloads/pypy-5.8-1-linux_x86_64-portable.tar.bz2
@@ -77,7 +77,7 @@ sudo pypy -m pip install blosc
 sudo pypy -m pip install intervaltree
 ```
 
-To guarantee a good user experience, pypy must be installed to run `qly-callVarBam.py` (call variants from BAM), and `qly-callVarBamParallel.py` that generate parallelizable commands to run `qly-callVarBam.py`.
+To guarantee a good user experience, pypy must be installed to run `callVarBam.py` (call variants from BAM), and `allVarBamParallel.py` that generate parallelizable commands to run `callVarBam.py`.
 Tensorflow is optimized using Cython thus not compatible with `pypy`. For the list of scripts compatible to `pypy`, please refer to the **Folder Stucture and Program Descriptions** section.
 *Pypy is an awesome Python JIT intepreter, you can donate to [the project](https://pypy.org).*
 
@@ -91,7 +91,7 @@ You have a slow way and a quick way to get some demo variant calls. The slow way
 ```shell
 wget 'http://www.bio8.cs.hku.hk/testingData.tar'
 tar -xf testingData.tar
-cd qly-dataPrepScripts
+cd dataPrepScripts
 sh PrepDataBeforeDemo.sh
 ```
 
@@ -107,7 +107,7 @@ tar -xf training.tar
 
 ```shell
 cd training
-python ../QLY/qly-callVarBam.py \
+python ../QLY/callVarBam.py \
        --chkpnt_fn ../trainedModels/fullv3-illumina-novoalign-hg001+hg002-hg38/learningRate1e-3.epoch500 \
        --bam_fn ../testingData/chr21/chr21.bam \
        --ref_fn ../testingData/chr21/chr21.fa \
@@ -121,7 +121,7 @@ less chr21_calls.vcf
 
 ```shell
 cd training
-python ../QLY/call_var_qly.py --chkpnt_fn ../trainedModels/fullv3-illumina-novoalign-hg001+hg002-hg38/learningRate1e-3.epoch500 --tensor_fn tensor_can_chr21 --call_fn tensor_can_chr21.vcf
+python ../QLY/call_var.py --chkpnt_fn ../trainedModels/fullv3-illumina-novoalign-hg001+hg002-hg38/learningRate1e-3.epoch500 --tensor_fn tensor_can_chr21 --call_fn tensor_can_chr21.vcf
 less tensor_can_chr21.vcf
 ```
 
@@ -140,7 +140,7 @@ less tensor_can_chr21.vcf
 
 ### Commands
 ```shell
-python QLY/qly-callVarBamParallel.py \
+python QLY/callVarBamParallel.py \
        --chkpnt_fn trainedModels/fullv3-illumina-novoalign-hg001+hg002-hg38/learningRate1e-3.epoch500 \
        --ref_fn GRCh38_full_analysis_set_plus_decoy_hla.fa \
        --bam_fn GIAB_v3.2.2_Illumina_50x_GRCh38_HG001.bam \
@@ -158,13 +158,13 @@ vcfcat hg001*.vcf | vcfstreamsort | bgziptabix hg001.vcf.gz
 
 * `parallel -j4` will run 4 commands in parallel. Each command using at most `--tensorflowThreads 4` threads. `vcfcat`, `vcfstreamsort` and `bgziptabix` are a part of **vcflib**.
 * If you don't have `parallel` installed on your computer, try `awk '{print "\""$0"\""}' commands.sh | xargs -P4 -L1 sh -c`.
-* `CUDA_VISIBLE_DEVICES=""` makes GPUs invisible to QLY so it will use CPU only. Please notice that unless you want to run `commands.sh` in serial, you cannot use GPU because one running copy of QLY will occupy all available memory of a GPU. While the bottleneck of `qly-callVarBam.py` is at the CPU only `CreateTensor.py` script, the effect of GPU accelerate is insignificant (roughly about 15% faster). But if you have multiple GPU cards in your system, and you want to utilize them in variant calling, you may want split the `commands.sh` in to parts, and run the parts by firstly `export CUDA_VISIBLE_DEVICES="$i"`, where `$i` is an integer from 0 identifying the seqeunce of the GPU to be used.
+* `CUDA_VISIBLE_DEVICES=""` makes GPUs invisible to QLY so it will use CPU only. Please notice that unless you want to run `commands.sh` in serial, you cannot use GPU because one running copy of QLY will occupy all available memory of a GPU. While the bottleneck of `callVarBam.py` is at the CPU only `CreateTensor.py` script, the effect of GPU accelerate is insignificant (roughly about 15% faster). But if you have multiple GPU cards in your system, and you want to utilize them in variant calling, you may want split the `commands.sh` in to parts, and run the parts by firstly `export CUDA_VISIBLE_DEVICES="$i"`, where `$i` is an integer from 0 identifying the seqeunce of the GPU to be used.
 
 ***
 
 ## VCF Output Format
-`QLY/call_var_qly.py` outputs variants in VCF format with version 4.1 specifications.
-QLY can predict the exact length of insertions and deletions shorter than or equal to 4bp. For insertions and deletions with a length between 5bp to 15bp, callVar guesses the length from input tensors. The indels with guessed length are denoted with a `LENGUESS` info tag. Although the guessed indel length might be incorrect, users can still benchmark QLY's sensitivity by matching the indel positions to other callsets. For indels longer than 15bp, `call_var_qly.py` outputs them as SV without providing an alternative allele. To fit into a different usage scenario, QLY allows users to extend its model easily to support exact length prediction on longer indels by adding categories to the model output. However, this requires additional training data on the new categories. Users can also increase the length limit from where an indel is outputted as a SV by increasing the parameter flankingBaseNum from 16bp to a higher value. This extends the flanking bases to be considered with a candidate variant.
+`QLY/call_var.py` outputs variants in VCF format with version 4.1 specifications.
+QLY can predict the exact length of insertions and deletions shorter than or equal to 4bp. For insertions and deletions with a length between 5bp to 15bp, callVar guesses the length from input tensors. The indels with guessed length are denoted with a `LENGUESS` info tag. Although the guessed indel length might be incorrect, users can still benchmark QLY's sensitivity by matching the indel positions to other callsets. For indels longer than 15bp, `call_var.py` outputs them as SV without providing an alternative allele. To fit into a different usage scenario, QLY allows users to extend its model easily to support exact length prediction on longer indels by adding categories to the model output. However, this requires additional training data on the new categories. Users can also increase the length limit from where an indel is outputted as a SV by increasing the parameter flankingBaseNum from 16bp to a higher value. This extends the flanking bases to be considered with a candidate variant.
 
 ***
 
@@ -182,7 +182,7 @@ python demoRun.py
 ## Folder Stucture and Program Descriptions
 *You can also run the program to get the parameter details.*
 
-`qly-dataPrepScripts/` | Data Preparation Scripts. Outputs are gzipped unless using standard output. Scripts in this folder are compatible with `pypy`.
+`dataPrepScripts/` | Data Preparation Scripts. Outputs are gzipped unless using standard output. Scripts in this folder are compatible with `pypy`.
 --- | ---
 `ExtractVariantCandidates.py`| Extract the position of variant candidates. Input: BAM; Reference FASTA. Important options: --threshold "Minimum alternative allelic fraction to report a candidate"; --minCoverage "Minimum coverage to report a candidate".
 `GetTruth.py`| Extract the variants from a truth VCF. Input: VCF.
@@ -199,9 +199,9 @@ python demoRun.py
 
 `QLY/` | Model Training and Variant Caller Scripts. Scripts in this folder are NOT compatible with `pypy`. Please run with `python`.
 --- | ---
-`call_var_qly.py `| Call variants using candidate variant tensors.
-`qly-callVarBam.py` | Call variants directly from a BAM file.
-`qly-callVarBamParallel.py` | Generate `qly-callVarBam.py` commands that can be run in parallel. A BED file is required to specify the regions for variant calling. `--refChunkSize` set the genome chuck size per job.
+`call_var.py `| Call variants using candidate variant tensors.
+`callVarBam.py` | Call variants directly from a BAM file.
+`callVarBamParallel.py` | Generate `callVarBam.py` commands that can be run in parallel. A BED file is required to specify the regions for variant calling. `--refChunkSize` set the genome chuck size per job.
 `demoRun.py` | A **Demo** showing how to train a model from scratch.
 `evaluate.py` | Evaluate a model in terms of base change, zygosity, variant type and indel length.
 `param.py` |  Hyperparameters for model training and other global parameters for the scripts in the folder.
@@ -212,7 +212,7 @@ python demoRun.py
 `calTrainDevDiff.py` | Helper script. Calculate the training loss and validation loss on a trained model.
 `getTensorAndLayerPNG.py` | Create high resolution PNG figures to visualize input tensor, layer activations and output.
 `getEmbedding.py` | Prepare a folder readable by Tensorboard for visualizing predicted results.
-`utils_qly.py` | Helper functions to the network.
+`utils.py` | Helper functions to the network.
 
 
 *GIAB provides a BED file that marks the high confidence regions in the reference. The models perform better by using only the truth variants in these regions for training. If you don't have such a BED file, you can use a BED file that covers the whole genome.*
@@ -223,7 +223,7 @@ python demoRun.py
 
 ## About Setting the Alternative Allele Frequency Cutoff
 
-Different from model training, in which all genome positions are candidates but randomly subsampled for training, variant calling using a trained model will require the user to define a minimal alternative allele frequency cutoff for a genome position to be considered as a candidate for variant calling. For all sequencing technologies, the lower the cutoff, the lower the speed. Setting a cutoff too low will increase the false positive rate significantly, while too high will increase the false negative rate significantly. The option `--threshold` controls the cutoff in these three scripts `qly-callVarBam.py`, `qly-callVarBamParallel.py` and `ExtractVariantCandidates.py`. The suggested cutoff is listed below for different sequencing technologies. A higher cutoff will increase the accuracy of datasets with poor sequencing quality, while a lower cutoff will increase the sensitivity in applications like clinical research. Setting a lower cutoff and further filter the variants by their quality is also a good practice.
+Different from model training, in which all genome positions are candidates but randomly subsampled for training, variant calling using a trained model will require the user to define a minimal alternative allele frequency cutoff for a genome position to be considered as a candidate for variant calling. For all sequencing technologies, the lower the cutoff, the lower the speed. Setting a cutoff too low will increase the false positive rate significantly, while too high will increase the false negative rate significantly. The option `--threshold` controls the cutoff in these three scripts `callVarBam.py`, `callVarBamParallel.py` and `ExtractVariantCandidates.py`. The suggested cutoff is listed below for different sequencing technologies. A higher cutoff will increase the accuracy of datasets with poor sequencing quality, while a lower cutoff will increase the sensitivity in applications like clinical research. Setting a lower cutoff and further filter the variants by their quality is also a good practice.
 
 Sequencing Technology | Alt. AF Cutoff |
 :---: |:---:|

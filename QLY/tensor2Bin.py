@@ -3,15 +3,10 @@ import argparse
 import logging
 import pickle
 import param
-
+import utils
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 def Run(args):
-    if args.qly == True:
-        import utils_qly as utils
-        print "qly"
-    elif args.v2 == True or args.v3 == True:
-        import utils_v2 as utils
     utils.SetupEnv()
     Convert(args, utils)
 
@@ -48,15 +43,6 @@ if __name__ == "__main__":
     parser.add_argument('--bin_fn', type=str, default = None,
             help="Output a binary tensor file")
 
-    parser.add_argument('--v3', type=param.str2bool, nargs='?', const=True, default = True,
-            help="Use Clairvoyante version 3")
-
-    parser.add_argument('--v2', type=param.str2bool, nargs='?', const=True, default = False,
-            help="Use Clairvoyante version 2")
-
-    parser.add_argument('--qly', type=param.str2bool, nargs='?', const=True, default = False,
-            help="Use QianLiYan")
-
     args = parser.parse_args()
 
     if len(sys.argv[1:]) == 0:
@@ -64,4 +50,3 @@ if __name__ == "__main__":
         sys.exit(1)
 
     Run(args)
-

@@ -7,7 +7,7 @@ import param
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import utils_qly as utils # v3 network is using v2 utils
+import utils
 import qianliyan_v2 as cv
 
 def Prepare(args):
