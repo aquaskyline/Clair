@@ -298,7 +298,7 @@ if __name__ == "__main__":
         l2_regularization_lambda=args.lambd,
         output_file_path_prefix=args.ochk_prefix,
         model_initalization_file_path=args.chkpnt_fn,
-        summary_writer=m.summaryFileWriter(args.olog_dir) if args.olog_dir != None else None,
+        summary_writer=m.get_summary_file_writer(args.olog_dir) if args.olog_dir != None else None,
     )
 
     _training_losses, validation_losses = train_model(m, training_config)
