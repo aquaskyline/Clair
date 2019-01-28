@@ -1,13 +1,13 @@
-# Clair - A deep neural network based variant caller
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-Contact: Ruibang Luo
-Email: rbluo@cs.hku.hk
+# Clair - A deep neural network based variant caller  
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)  
+Contact: Ruibang Luo  
+Email: rbluo@cs.hku.hk  
 
 ***
 
 ## Installation
 ```shell
-git clone --depth=1 https://github.com/HKU-BAL/QLY.git
+git clone https://github.com/HKU-BAL/Clair.git
 cd Clair
 curl http://www.bio8.cs.hku.hk/trainedModels.tbz | tar -jxf -
 ```
