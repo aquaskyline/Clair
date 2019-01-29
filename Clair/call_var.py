@@ -118,6 +118,14 @@ def Output(
         if quality_score > 999:
             quality_score = 999
 
+        # filtration value
+        filtration_value = "."
+        if args.qual != None:
+            if quality_score >= args.qual:
+                filtration_value = "PASS"
+            else:
+                filtration_value = "LowQual"
+
         # Get possible alternative bases
         sorted_base_change_probabilities = base_change_probabilities[row_index].argsort()[::-1]
         base1 = num2base[sorted_base_change_probabilities[0]]
@@ -259,12 +267,13 @@ def Output(
         # if row_index % 10000 == 0:
         #     logging.info("LOG")
 
-        print >> call_fh, "%s\t%d\t.\t%s\t%s\t%d\t.\t%s\tGT:GQ:DP:AF\t%s:%d:%d:%.4f" % (
+        print >> call_fh, "%s\t%d\t.\t%s\t%s\t%d\t%s\t%s\tGT:GQ:DP:AF\t%s:%d:%d:%.4f" % (
             chromosome,
             position,
             reference_base,
             alternate_base,
             quality_score,
+            filtration_value,
             information_string,
             genotype_string,
             quality_score,
@@ -275,6 +284,8 @@ def Output(
 
 def print_vcf_header(args, call_fh):
     print >> call_fh, '##fileformat=VCFv4.1'
+    print >> call_fh, '##FILTER=<ID=PASS,Description="All filters passed">'
+    print >> call_fh, '##FILTER=<ID=LowQual,Description="Confidence in this variant being real is below calling threshold.">'
     print >> call_fh, '##ALT=<ID=DEL,Description="Deletion">'
     print >> call_fh, '##ALT=<ID=INS,Description="Insertion of novel sequence">'
     print >> call_fh, '##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">'
@@ -283,6 +294,17 @@ def print_vcf_header(args, call_fh):
     print >> call_fh, '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'
     print >> call_fh, '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">'
     print >> call_fh, '##FORMAT=<ID=AF,Number=1,Type=Float,Description="Estimated allele frequency in the range (0,1)">'
+
+    if args.ref_fn != None:
+       fai_fn = args.ref_fn + ".fai"
+       fai_fp = open(fai_fn)
+       for line in fai_fp:
+           fields = line.strip().split("\t")
+           chromName = fields[0]
+           chromLength = int(fields[1])
+           print >> call_fh, "##contig=<ID=%s,length=%d>" % (chromName, chromLength)
+
+
     print >> call_fh, '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s' % (args.sampleName)
 
 
@@ -382,11 +404,17 @@ if __name__ == "__main__":
     parser.add_argument('--call_fn', type=str, default=None,
                         help="Output variant predictions")
 
+    parser.add_argument('--qual', type=int, default = None,
+             help="If set, variant with equal or higher quality will be marked PASS, or LowQual otherwise, optional")
+
     parser.add_argument('--sampleName', type=str, default="SAMPLE",
                         help="Define the sample name to be shown in the VCF file")
 
     parser.add_argument('--showRef', type=param.str2bool, nargs='?', const=True, default=False,
                         help="Show reference calls, optional")
+
+    parser.add_argument('--ref_fn', type=str, default=None,
+                     help="Reference fasta file input, optional, print contig tags in the VCF header if set")
 
     parser.add_argument('--threads', type=int, default=None,
                         help="Number of threads, optional")
