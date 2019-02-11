@@ -23,67 +23,89 @@ stripe2 = param.matrixRow * param.matrixNum
 stripe1 = param.matrixNum
 
 
-def GenerateTensor(ctgName, alns, center, refSeq):
-    alnCode = [0] * ((2*param.flankingBaseNum+1) * param.matrixRow * param.matrixNum)
-    for aln in alns:
-        for refPos, queryAdv, refBase, queryBase, STRAND in aln:
-            if str(refBase) not in "ACGT-":
+def generate_tensor(ctg_name, alignments, center, reference_sequence, reference_start, minimum_coverage):
+    flanking_base_num = param.flankingBaseNum
+    matrix_row = param.matrixRow
+    matrix_num = param.matrixNum
+
+    alignment_code = [0] * ((2 * flanking_base_num + 1) * matrix_row * matrix_num)
+    depth = [0] * ((2 * flanking_base_num + 1))
+    for alignment in alignments:
+        for reference_position, queryAdv, reference_base, query_base, STRAND in alignment:
+            if str(reference_base) not in "ACGT-":
                 continue
-            if str(queryBase) not in "ACGT-":
+            if str(query_base) not in "ACGT-":
                 continue
-            if refPos - center >= -(param.flankingBaseNum+1) and refPos - center < param.flankingBaseNum:
-                offset = refPos - center + (param.flankingBaseNum+1)
-                if queryBase != "-":
-                    if refBase != "-":
-                        alnCode[stripe2*offset + stripe1*(base2num[refBase] + STRAND*4) + 0] += 1.0
-                        alnCode[stripe2*offset + stripe1*(base2num[queryBase] + STRAND*4) + 1] += 1.0
-                        alnCode[stripe2*offset + stripe1*(base2num[refBase] + STRAND*4) + 2] += 1.0
-                        alnCode[stripe2*offset + stripe1*(base2num[queryBase] + STRAND*4) + 3] += 1.0
-                    elif refBase == "-":
-                        idx = min(offset+queryAdv, 2*param.flankingBaseNum+1-1)
-                        alnCode[stripe2*idx + stripe1*(base2num[queryBase] + STRAND*4) + 1] += 1.0
-                    else:
-                        print >> sys.stderr, "Should not reach here: %s, %s" % (refBase, queryBase)
-                elif queryBase == "-":
-                    if refBase != "-":
-                        alnCode[stripe2*offset + stripe1*(base2num[refBase] + STRAND*4) + 2] += 1.0
-                    else:
-                        print >> sys.stderr, "Should not reach here: %s, %s" % (refBase, queryBase)
+            if not (-(flanking_base_num + 1) <= reference_position - center < flanking_base_num):
+                continue
+
+            offset = reference_position - center + (flanking_base_num + 1)
+            if query_base != "-":
+                if reference_base != "-":
+                    depth[offset] = depth[offset] + 1
+                    alignment_code[stripe2*offset + stripe1*(base2num[reference_base] + STRAND*4) + 0] += 1.0
+                    alignment_code[stripe2*offset + stripe1*(base2num[query_base] + STRAND*4) + 1] += 1.0
+                    alignment_code[stripe2*offset + stripe1*(base2num[reference_base] + STRAND*4) + 2] += 1.0
+                    alignment_code[stripe2*offset + stripe1*(base2num[query_base] + STRAND*4) + 3] += 1.0
+                elif reference_base == "-":
+                    idx = min(offset+queryAdv, 2*flanking_base_num+1 - 1)
+                    alignment_code[stripe2*idx + stripe1*(base2num[query_base] + STRAND*4) + 1] += 1.0
                 else:
-                    print >> sys.stderr, "Should not reach here: %s, %s" % (refBase, queryBase)
+                    print >> sys.stderr, "Should not reach here: %s, %s" % (reference_base, query_base)
+            elif query_base == "-":
+                if reference_base != "-":
+                    alignment_code[stripe2*offset + stripe1*(base2num[reference_base] + STRAND*4) + 2] += 1.0
+                else:
+                    print >> sys.stderr, "Should not reach here: %s, %s" % (reference_base, query_base)
+            else:
+                print >> sys.stderr, "Should not reach here: %s, %s" % (reference_base, query_base)
 
-    newRefPos = center - (0 if args.refStart == None else (args.refStart - 1))
-    if (newRefPos - (param.flankingBaseNum+1) >= 0):
-        outputLine = "%s %d %s %s" % (
-            ctgName, center, refSeq[newRefPos-(param.flankingBaseNum+1):newRefPos+param.flankingBaseNum], " ".join("%0.1f" % x for x in alnCode))
-        return outputLine
-    else:
+    new_reference_position = center - (0 if reference_start == None else (reference_start - 1))
+    if new_reference_position - (flanking_base_num+1) < 0 or depth[flanking_base_num] < minimum_coverage:
         return None
+    return "%s %d %s %s" % (
+        ctg_name,
+        center,
+        reference_sequence[new_reference_position-(flanking_base_num+1):new_reference_position + flanking_base_num],
+        " ".join("%0.1f" % x for x in alignment_code)
+    )
 
 
-def GetCandidate(args, beginToEnd):
-    if args.can_fn != "PIPE":
-        f = subprocess.Popen(shlex.split("gzip -fdc %s" % (args.can_fn)), stdout=subprocess.PIPE, bufsize=8388608)
-        fo = f.stdout
+def get_candidate_position_generator(
+    candidate_file_path,
+    ctg_start,
+    ctg_end,
+    is_consider_left_edge,
+    flanking_base_num,
+    begin_to_end
+):
+    is_read_file_from_standard_input = candidate_file_path == "PIPE"
+    if is_read_file_from_standard_input:
+        candidate_file_path_output = sys.stdin
     else:
-        fo = sys.stdin
-    for row in fo:
-        row = row.split()
-        pos = int(row[1])
-        if args.ctgStart != None and pos < args.ctgStart:
-            continue
-        if args.ctgEnd != None and pos > args.ctgEnd:
-            continue
-        if args.considerleftedge == False:
-            beginToEnd[pos - (param.flankingBaseNum+1)] = (pos + (param.flankingBaseNum+1), pos)
-        elif args.considerleftedge == True:
-            for i in range(pos - (param.flankingBaseNum+1), pos + (param.flankingBaseNum+1)):
-                beginToEnd[i] = (pos + (param.flankingBaseNum+1), pos)
-        yield pos
+        candidate_file_path_process = subprocess.Popen(
+            shlex.split("gzip -fdc %s" % (candidate_file_path)), stdout=subprocess.PIPE, bufsize=8388608
+        )
+        candidate_file_path_output = candidate_file_path_process.stdout
 
-    if args.can_fn != "PIPE":
-        fo.close()
-        f.wait()
+    for row in candidate_file_path_output:
+        row = row.split()
+        position = int(row[1])
+        if ctg_start != None and position < ctg_start:
+            continue
+        if ctg_end != None and position > ctg_end:
+            continue
+        if is_consider_left_edge == True:
+            for i in range(position - (flanking_base_num + 1), position + (flanking_base_num + 1)):
+                begin_to_end[i] = (position + (flanking_base_num + 1), position)
+        elif is_consider_left_edge == False:
+            begin_to_end[position - (flanking_base_num + 1)] = (position + (flanking_base_num + 1), position)
+
+        yield position
+
+    if not is_read_file_from_standard_input:
+        candidate_file_path_output.close()
+        candidate_file_path_process.wait()
     yield -1
 
 
@@ -95,96 +117,212 @@ class TensorStdout(object):
         self.stdin.close()
 
 
-def OutputAlnTensor(args):
+def get_reference_result_from(
+    ctg_name,
+    ctg_start,
+    ctg_end,
+    samtools,
+    reference_file_path,
+    expand_reference_region
+):
+    faidx_process = None
+    reference_start = None
+    reference_end = None
 
-    availableSlots = 10000000
-    dcov = args.dcov
-    args.refStart = None
-    args.refEnd = None
-    refSeq = []
-    refName = None
-    rowCount = 0
-    if args.ctgStart != None and args.ctgEnd != None:
-        args.ctgStart += 1  # Change 0-based (BED) to 1-based (VCF and samtools faidx)
-        args.refStart = args.ctgStart
-        args.refEnd = args.ctgEnd
-        args.refStart -= param.expandReferenceRegion
-        args.refStart = 1 if args.refStart < 1 else args.refStart
-        args.refEnd += param.expandReferenceRegion
-        p1 = subprocess.Popen(shlex.split("%s faidx %s %s:%d-%d" % (args.samtools, args.ref_fn,
-                                                                    args.ctgName, args.refStart, args.refEnd)), stdout=subprocess.PIPE, bufsize=8388608)
+    have_start_and_end_position = ctg_start != None and ctg_end != None
+    if have_start_and_end_position:
+        ctg_start += 1  # Change 0-based (BED) to 1-based (VCF and samtools faidx)
+        reference_start = ctg_start
+        reference_end = ctg_end
+        reference_start -= expand_reference_region
+        reference_start = 1 if reference_start < 1 else reference_end
+        reference_end += expand_reference_region
+
+        faidx_process = subprocess.Popen(
+            shlex.split(
+                "%s faidx %s %s:%d-%d" % (samtools, reference_file_path, ctg_name, reference_start, reference_end)
+            ),
+            stdout=subprocess.PIPE,
+            bufsize=8388608
+        )
     else:
-        args.ctgStart = args.ctgEnd = None
-        p1 = subprocess.Popen(shlex.split("%s faidx %s %s" % (args.samtools, args.ref_fn,
-                                                              args.ctgName)), stdout=subprocess.PIPE, bufsize=8388608)
+        ctg_start = None
+        ctg_end = None
+        faidx_process = subprocess.Popen(
+            shlex.split("%s faidx %s %s" % (samtools, reference_file_path, ctg_name)),
+            stdout=subprocess.PIPE,
+            bufsize=8388608
+        )
 
-    for row in p1.stdout:
-        if rowCount == 0:
-            refName = row.rstrip().lstrip(">")
+    if faidx_process is None:
+        return None
+
+    reference_name = ""
+    reference_sequence = []
+    row_count = 0
+    for row in faidx_process.stdout:
+        if row_count == 0:
+            reference_name = row.rstrip().lstrip(">")
         else:
-            refSeq.append(row.rstrip())
-        rowCount += 1
-    refSeq = "".join(refSeq)
+            reference_sequence.append(row.rstrip())
+        row_count += 1
+    reference_sequence = "".join(reference_sequence)
 
-    p1.stdout.close()
-    p1.wait()
+    faidx_process.stdout.close()
+    faidx_process.wait()
 
-    if p1.returncode != 0 or len(refSeq) == 0:
+    return dict(
+        name=reference_name,
+        start=reference_start,
+        end=reference_end,
+        sequence=reference_sequence,
+        is_faidx_process_have_error=faidx_process.returncode != 0,
+    )
+
+
+def get_samtools_view_process_from(
+    ctg_name,
+    ctg_start,
+    ctg_end,
+    samtools,
+    bam_file_path
+):
+    have_start_and_end_position = ctg_start != None and ctg_end != None
+    if have_start_and_end_position:
+        return subprocess.Popen(
+            shlex.split("%s view -F 2308 %s %s:%d-%d" % (samtools, bam_file_path, ctg_name, ctg_start, ctg_end)),
+            stdout=subprocess.PIPE,
+            bufsize=8388608
+        )
+    return subprocess.Popen(
+        shlex.split("%s view -F 2308 %s %s" % (samtools, bam_file_path, ctg_name)),
+        stdout=subprocess.PIPE,
+        bufsize=8388608
+    )
+
+
+def get_depth_from(
+    samtools,
+    bam_file_path,
+    ctg_name,
+    ctg_pos
+):
+    """
+    Get depth at ctg position using samtools depth
+
+    depth_from_samtools = get_depth_from(
+        samtools=args.samtools,
+        bam_file_path=args.bam_fn,
+        ctg_name=args.ctgName,
+        ctg_pos=center,
+    )
+    """
+
+    samtools_depth_process = subprocess.Popen(
+        shlex.split("%s depth -a -aa -q 0 -Q 0 -l 0 -r %s:%d-%d %s" %
+                    (samtools, ctg_name, ctg_pos, ctg_pos, bam_file_path)),
+        stdout=subprocess.PIPE,
+        bufsize=8388608
+    )
+
+    depth = None
+    for row in samtools_depth_process.stdout:
+        data = row.split()
+        depth = data[-1]
+        break
+
+    samtools_depth_process.stdout.close()
+    samtools_depth_process.wait()
+
+    return depth
+
+
+def OutputAlnTensor(args):
+    available_slots = 10000000
+    ctg_name = args.ctgName
+    min_coverage = args.minCoverage
+
+    dcov = args.dcov
+    reference_result = get_reference_result_from(
+        ctg_name=args.ctgName,
+        ctg_start=args.ctgStart,
+        ctg_end=args.ctgEnd,
+        samtools=args.samtools,
+        reference_file_path=args.ref_fn,
+        expand_reference_region=param.expandReferenceRegion,
+    )
+
+    reference_sequence = reference_result["sequence"] if reference_result is not None else ""
+    is_faidx_process_have_error = reference_result is None or reference_result["is_faidx_process_have_error"]
+    have_reference_sequence = reference_result is not None and len(reference_sequence) > 0
+
+    if reference_result is None or is_faidx_process_have_error or not have_reference_sequence:
         print >> sys.stderr, "Failed to load reference seqeunce. Please check if the provided reference fasta %s and the ctgName %s are correct." % (
-            args.ref_fn, args.ctgName)
+            args.ref_fn,
+            args.ctgName
+        )
         sys.exit(1)
 
-    beginToEnd = {}
-    canPos = 0
-    canGen = GetCandidate(args, beginToEnd)
+    reference_start = reference_result["start"]
+    begin_to_end = {}
+    candidate_position = 0
+    candidate_position_generator = get_candidate_position_generator(
+        candidate_file_path=args.can_fn,
+        ctg_start=args.ctgStart,
+        ctg_end=args.ctgEnd,
+        is_consider_left_edge=args.considerleftedge,
+        flanking_base_num=param.flankingBaseNum,
+        begin_to_end=begin_to_end
+    )
 
     try:
-        p2 = subprocess.Popen(shlex.split("%s view %s %s:%d-%d" % (args.samtools, args.bam_fn, args.ctgName, args.ctgStart, args.ctgEnd)), stdout=subprocess.PIPE, bufsize=8388608)\
-            if args.ctgStart != None and args.ctgEnd != None\
-            else subprocess.Popen(shlex.split("%s view %s %s" % (args.samtools, args.bam_fn, args.ctgName)), stdout=subprocess.PIPE, bufsize=8388608)
+        samtools_view_process = get_samtools_view_process_from(
+            ctg_name=args.ctgName,
+            ctg_start=args.ctgStart,
+            ctg_end=args.ctgEnd,
+            samtools=args.samtools,
+            bam_file_path=args.bam_fn
+        )
 
-        centerToAln = {}
+        center_to_alignment = {}
 
         if args.tensor_fn != "PIPE":
             tensor_fpo = open(args.tensor_fn, "wb")
-            tensor_fp = subprocess.Popen(shlex.split("gzip -c"), stdin=subprocess.PIPE,
-                                         stdout=tensor_fpo, stderr=sys.stderr, bufsize=8388608)
+            tensor_fp = subprocess.Popen(
+                shlex.split("gzip -c"), stdin=subprocess.PIPE, stdout=tensor_fpo, stderr=sys.stderr, bufsize=8388608
+            )
         else:
             tensor_fp = TensorStdout(sys.stdout)
 
-        # if is_pypy:
-        #    signal.signal(signal.SIGALRM, PypyGCCollect)
-        #    signal.alarm(60)
-
-        previousPos = 0
+        previous_position = 0
         depthCap = 0
-        for l in p2.stdout:
+        for l in samtools_view_process.stdout:
             l = l.split()
             if l[0][0] == "@":
                 continue
 
-            QNAME = l[0]
+            _QNAME = l[0]
             FLAG = int(l[1])
-            RNAME = l[2]
+            _RNAME = l[2]
             POS = int(l[3]) - 1  # switch from 1-base to 0-base to match sequence index
             MQ = int(l[4])
             CIGAR = l[5]
             SEQ = l[9]
-            refPos = POS
-            queryPos = 0
+            reference_position = POS
+            query_position = 0
             STRAND = (16 == (FLAG & 16))
 
             if MQ < args.minMQ:
                 continue
 
-            endToCenter = {}
-            activeSet = set()
+            end_to_center = {}
+            active_set = set()
 
-            while canPos != -1 and canPos < (POS + len(SEQ) + 100000):
-                canPos = next(canGen)
+            while candidate_position != -1 and candidate_position < (POS + len(SEQ) + 100000):
+                candidate_position = next(candidate_position_generator)
 
-            if previousPos != POS:
-                previousPos = POS
+            if previous_position != POS:
+                previous_position = POS
                 depthCap = 0
             else:
                 depthCap += 1
@@ -192,86 +330,128 @@ def OutputAlnTensor(args):
                     #print >> sys.stderr, "Bypassing POS %d at depth %d\n" % (POS, depthCap)
                     continue
 
-            for m in re.finditer(cigarRe, CIGAR):
-                if availableSlots == 0:
+            advance = 0
+            for c in str(CIGAR):
+                if available_slots == 0:
                     break
-                advance = int(m.group(1))
-                if m.group(2) == "S":
-                    queryPos += advance
-                if m.group(2) in ("M", "=", "X"):
-                    for i in xrange(advance):
-                        if refPos in beginToEnd:
-                            rEnd, rCenter = beginToEnd[refPos]
-                            if rCenter not in activeSet:
-                                endToCenter[rEnd] = rCenter
-                                activeSet.add(rCenter)
-                                centerToAln.setdefault(rCenter, [])
-                                centerToAln[rCenter].append([])
-                        for center in list(activeSet):
-                            if availableSlots != 0:
-                                availableSlots -= 1
-                                centerToAln[center][-1].append(
-                                    (refPos, 0, refSeq[refPos - (0 if args.refStart == None else (args.refStart - 1))], SEQ[queryPos], STRAND))
-                        if refPos in endToCenter:
-                            center = endToCenter[refPos]
-                            activeSet.remove(center)
-                        refPos += 1
-                        queryPos += 1
 
-                elif m.group(2) == "I":
+                if c.isdigit():
+                    advance = advance * 10 + int(c)
+                    continue
+
+                # soft clip
+                if c == "S":
+                    query_position += advance
+
+                # match / mismatch
+                if c == "M" or c == "=" or c == "X":
+                    for _ in xrange(advance):
+                        if reference_position in begin_to_end:
+                            rEnd, rCenter = begin_to_end[reference_position]
+                            if rCenter not in active_set:
+                                end_to_center[rEnd] = rCenter
+                                active_set.add(rCenter)
+                                center_to_alignment.setdefault(rCenter, [])
+                                center_to_alignment[rCenter].append([])
+                        for center in list(active_set):
+                            if available_slots == 0:
+                                continue
+                            available_slots -= 1
+
+                            center_to_alignment[center][-1].append((
+                                reference_position,
+                                0,
+                                reference_sequence[reference_position -
+                                                    (0 if reference_start == None else (reference_start - 1))],
+                                SEQ[query_position],
+                                STRAND
+                            ))
+                        if reference_position in end_to_center:
+                            center = end_to_center[reference_position]
+                            active_set.remove(center)
+                        reference_position += 1
+                        query_position += 1
+
+                # insertion
+                if c == "I":
                     queryAdv = 0
-                    for i in range(advance):
-                        for center in list(activeSet):
-                            if availableSlots != 0:
-                                availableSlots -= 1
-                                centerToAln[center][-1].append((refPos, queryAdv, "-", SEQ[queryPos], STRAND))
-                        queryPos += 1
+                    for _ in xrange(advance):
+                        for center in list(active_set):
+                            if available_slots == 0:
+                                continue
+                            available_slots -= 1
+
+                            center_to_alignment[center][-1].append((
+                                reference_position,
+                                queryAdv,
+                                "-",
+                                SEQ[query_position],
+                                STRAND
+                            ))
+                        query_position += 1
                         queryAdv += 1
 
-                elif m.group(2) == "D":
-                    for i in xrange(advance):
-                        for center in list(activeSet):
-                            if availableSlots != 0:
-                                availableSlots -= 1
-                                centerToAln[center][-1].append((refPos, 0, refSeq[refPos -
-                                                                                  (0 if args.refStart == None else (args.refStart - 1))], "-", STRAND))
-                        if refPos in beginToEnd:
-                            rEnd, rCenter = beginToEnd[refPos]
-                            if rCenter not in activeSet:
-                                endToCenter[rEnd] = rCenter
-                                activeSet.add(rCenter)
-                                centerToAln.setdefault(rCenter, [])
-                                centerToAln[rCenter].append([])
-                        if refPos in endToCenter:
-                            center = endToCenter[refPos]
-                            activeSet.remove(center)
-                        refPos += 1
+                # deletion
+                if c == "D":
+                    for _ in xrange(advance):
+                        for center in list(active_set):
+                            if available_slots == 0:
+                                continue
+                            available_slots -= 1
+
+                            center_to_alignment[center][-1].append((
+                                reference_position,
+                                0,
+                                reference_sequence[reference_position -
+                                                    (0 if reference_start == None else (reference_start - 1))],
+                                "-",
+                                STRAND
+                            ))
+                        if reference_position in begin_to_end:
+                            rEnd, rCenter = begin_to_end[reference_position]
+                            if rCenter not in active_set:
+                                end_to_center[rEnd] = rCenter
+                                active_set.add(rCenter)
+                                center_to_alignment.setdefault(rCenter, [])
+                                center_to_alignment[rCenter].append([])
+                        if reference_position in end_to_center:
+                            center = end_to_center[reference_position]
+                            active_set.remove(center)
+                        reference_position += 1
+
+                # reset advance
+                advance = 0
 
             if depthCap == 0:
-                for center in centerToAln.keys():
-                    if center + (param.flankingBaseNum+1) < POS:
-                        l = GenerateTensor(args.ctgName, centerToAln[center], center, refSeq)
-                        if l != None:
-                            tensor_fp.stdin.write(l)
-                            tensor_fp.stdin.write("\n")
-                        availableSlots += sum(len(i) for i in centerToAln[center])
-                        #print >> sys.stderr, "POS %d: remaining slots %d" % (center, availableSlots)
-                        del centerToAln[center]
+                for center in center_to_alignment.keys():
+                    if center + (param.flankingBaseNum + 1) >= POS:
+                        continue
+                    l = generate_tensor(
+                        ctg_name, center_to_alignment[center], center, reference_sequence, reference_start, min_coverage
+                    )
+                    if l != None:
+                        tensor_fp.stdin.write(l)
+                        tensor_fp.stdin.write("\n")
+                    available_slots += sum(len(i) for i in center_to_alignment[center])
+                    #print >> sys.stderr, "POS %d: remaining slots %d" % (center, available_slots)
+                    del center_to_alignment[center]
 
-        for center in centerToAln.keys():
-            l = GenerateTensor(args.ctgName, centerToAln[center], center, refSeq)
+        for center in center_to_alignment.keys():
+            l = generate_tensor(
+                ctg_name, center_to_alignment[center], center, reference_sequence, reference_start, min_coverage
+            )
             if l != None:
                 tensor_fp.stdin.write(l)
                 tensor_fp.stdin.write("\n")
 
-        p2.stdout.close()
-        p2.wait()
+        samtools_view_process.stdout.close()
+        samtools_view_process.wait()
         if args.tensor_fn != "PIPE":
             tensor_fp.stdin.close()
             tensor_fp.wait()
             tensor_fpo.close()
     except:
-        p2.terminate()
+        samtools_view_process.terminate()
         raise
 
 
@@ -311,7 +491,10 @@ if __name__ == "__main__":
                         help="Count the left-most base-pairs of a read for coverage even if the starting position of a read is after the starting position of a tensor, default: %(default)s")
 
     parser.add_argument('--dcov', type=int, default=250,
-                        help="Cap depth per position at %(default)s")
+                        help="Cap depth per position at %(default)d")
+
+    parser.add_argument('--minCoverage', type=int, default=0,
+                        help="Minimum coverage required to generate a tensor, default: %(default)d")
 
     args = parser.parse_args()
 
