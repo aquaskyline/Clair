@@ -12,6 +12,7 @@ import blosc
 import param
 
 base2num = dict(zip("ACGT", (0, 1, 2, 3)))
+PREFIX_CHAR_STR = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 def SetupEnv():
@@ -69,7 +70,7 @@ def GetTensor(tensor_fn, num):
     yield 1, c, x, pos
 
 
-def GetTrainingArray(tensor_fn, var_fn, bed_fn, shuffle=True):
+def GetTrainingArray(tensor_fn, var_fn, bed_fn, shuffle=True, is_allow_duplicate_chr_pos=False):
     tree = {}
     if bed_fn != None:
         f = subprocess.Popen(shlex.split("gzip -fdc %s" % (bed_fn)), stdout=subprocess.PIPE, bufsize=8388608)
@@ -156,7 +157,17 @@ def GetTrainingArray(tensor_fn, var_fn, bed_fn, shuffle=True):
         for i in range(1, param.matrixNum):
             x[:, :, i] -= x[:, :, 0]
 
-        X[key] = np.copy(x)
+        if key not in X:
+            X[key] = np.copy(x)
+        elif is_allow_duplicate_chr_pos:
+            new_key = ""
+            for character in PREFIX_CHAR_STR:
+                tmp_key = character + key
+                if tmp_key not in X:
+                    new_key = tmp_key
+                    break
+            if len(new_key) > 0:
+                X[new_key] = np.copy(x)
 
         if key not in Y:
             baseVec = [0., 0., 0., 0., 0., 1., 1., 0., 0., 0., 1., 0., 0., 0., 0., 0.]
@@ -174,7 +185,7 @@ def GetTrainingArray(tensor_fn, var_fn, bed_fn, shuffle=True):
     f.stdout.close()
     f.wait()
 
-    tensor_total = total
+    # print "[INFO] size of X: {}, size of Y: {}".format(len(X), len(Y))
 
     allPos = sorted(X.keys())
     if shuffle == True:
@@ -190,11 +201,20 @@ def GetTrainingArray(tensor_fn, var_fn, bed_fn, shuffle=True):
     total = 0
     for key in allPos:
         total += 1
+
         XArray.append(X[key])
         del X[key]
-        YArray.append(Y[key])
-        del Y[key]
-        posArray.append(key)
+
+        if key in Y:
+            YArray.append(Y[key])
+            posArray.append(key)
+            if not is_allow_duplicate_chr_pos:
+                del Y[key]
+        elif is_allow_duplicate_chr_pos:
+            tmp_key = key[1:]
+            YArray.append(Y[tmp_key])
+            posArray.append(tmp_key)
+
         count += 1
         if count == param.bloscBlockSize:
             XArrayCompressed.append(blosc.pack_array(np.array(XArray), cname='lz4hc'))
@@ -298,8 +318,8 @@ def get_tensor(tensor_fn, num):
     return GetTensor(tensor_fn, num)
 
 
-def get_training_array(tensor_fn, var_fn, bed_fn, shuffle=True):
-    return GetTrainingArray(tensor_fn, var_fn, bed_fn, shuffle)
+def get_training_array(tensor_fn, var_fn, bed_fn, shuffle=True, is_allow_duplicate_chr_pos=False):
+    return GetTrainingArray(tensor_fn, var_fn, bed_fn, shuffle, is_allow_duplicate_chr_pos)
 
 
 def decompress_array(array, start, num, maximum):
