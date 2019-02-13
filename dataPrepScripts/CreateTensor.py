@@ -135,7 +135,7 @@ def get_reference_result_from(
         reference_start = ctg_start
         reference_end = ctg_end
         reference_start -= expand_reference_region
-        reference_start = 1 if reference_start < 1 else reference_end
+        reference_start = 1 if reference_start < 1 else reference_start
         reference_end += expand_reference_region
 
         faidx_process = subprocess.Popen(
