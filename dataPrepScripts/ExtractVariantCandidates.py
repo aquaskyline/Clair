@@ -157,13 +157,18 @@ def MakeCandidates(args):
 
             if MQ < args.minMQ:
                 continue
+
             skipBase = 0
             totalAlnPos = 0
-            for m in re.finditer(cigarRe, CIGAR):
-                advance = int(m.group(1))
-                totalAlnPos += advance
-                if m.group(2) == "S":
+            advance = 0
+            for c in str(CIGAR):
+                if c.isdigit():
+                    advance = advance * 10 + int(c)
+                    continue
+                if c == "S":
                     skipBase += advance
+                totalAlnPos += advance
+                advance = 0
 
             if 1.0 - float(skipBase) / (totalAlnPos + 1) < 0.55:  # skip a read less than 55% aligned
                 continue
@@ -192,15 +197,11 @@ def MakeCandidates(args):
                 elif c == "I":
                     pileup.setdefault(refPos-1, {"A": 0, "C": 0, "G": 0, "T": 0, "I": 0, "D": 0, "N": 0})
                     pileup[refPos-1]["I"] += 1
-                    # for i in range(advance):
-                    #     queryPos += 1
                     queryPos += advance
 
                 elif c == "D":
                     pileup.setdefault(refPos-1, {"A": 0, "C": 0, "G": 0, "T": 0, "I": 0, "D": 0, "N": 0})
                     pileup[refPos-1]["D"] += 1
-                    # for i in range(advance):
-                    #     refPos += 1
                     refPos += advance
 
                 # reset advance
