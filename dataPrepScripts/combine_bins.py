@@ -1,6 +1,7 @@
 import os
 import pickle
 import argparse
+import random
 from collections import namedtuple
 
 Data = namedtuple('Data', ['x', 'y', 'pos', 'total'])
@@ -20,17 +21,25 @@ def process_command():
         '--bin_name', type=str, default="tensor.bin",
         help="Name of the large bin. (default: %(default)s)"
     )
+    parser.add_argument(
+        '--shuffle_data', type=bool, default=False,
+        help="Shuffle data after loaded all data. (default: %(default)s)"
+    )
 
     return parser.parse_args()
 
 
-def load_data_from(directory_path):
-    X=[]
-    Y=[]
-    pos=[]
-    total=0
+def load_data_from(directory_path, need_shuffle_file_paths=False):
+    X = []
+    Y = []
+    pos = []
+    total = 0
 
-    for file_path in os.listdir(directory_path):
+    file_paths = os.listdir(directory_path)
+    if need_shuffle_file_paths:
+        random.shuffle(file_paths)
+
+    for file_path in file_paths:
         absolute_file_path = os.path.abspath(os.path.join(directory_path, file_path))
         print "[INFO] Load data from: {}".format(absolute_file_path)
         with open(absolute_file_path, "rb") as f:
@@ -59,7 +68,10 @@ def output_data(dst, data):
 if __name__ == "__main__":
     args = process_command()
 
-    data = load_data_from(directory_path=args.src)
+    data = load_data_from(
+        directory_path=args.src,
+        need_shuffle_file_paths=args.shuffle_data
+    )
 
     output_data(
         dst=os.path.join(args.dst, args.bin_name),
