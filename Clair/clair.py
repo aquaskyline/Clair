@@ -1,6 +1,6 @@
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-import matplotlib.ticker as mticker
-import matplotlib.pyplot as plt
+# from mpl_toolkits.axes_grid1 import make_axes_locatable
+# import matplotlib.ticker as mticker
+# import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 import numpy as np
@@ -14,10 +14,10 @@ import param
 import math
 from collections import defaultdict
 import multiprocessing
-import imageio
+# import imageio
 
-import matplotlib as mpl
-mpl.use('Agg')
+# import matplotlib as mpl
+# mpl.use('Agg')
 
 
 class Clair(object):
