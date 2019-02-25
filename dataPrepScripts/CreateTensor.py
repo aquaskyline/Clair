@@ -275,184 +275,180 @@ def OutputAlnTensor(args):
         begin_to_end=begin_to_end
     )
 
-    try:
-        samtools_view_process = get_samtools_view_process_from(
-            ctg_name=args.ctgName,
-            ctg_start=args.ctgStart,
-            ctg_end=args.ctgEnd,
-            samtools=args.samtools,
-            bam_file_path=args.bam_fn
+    samtools_view_process = get_samtools_view_process_from(
+        ctg_name=args.ctgName,
+        ctg_start=args.ctgStart,
+        ctg_end=args.ctgEnd,
+        samtools=args.samtools,
+        bam_file_path=args.bam_fn
+    )
+
+    center_to_alignment = {}
+
+    if args.tensor_fn != "PIPE":
+        tensor_fpo = open(args.tensor_fn, "wb")
+        tensor_fp = subprocess.Popen(
+            shlex.split("gzip -c"), stdin=subprocess.PIPE, stdout=tensor_fpo, stderr=sys.stderr, bufsize=8388608
         )
+    else:
+        tensor_fp = TensorStdout(sys.stdout)
 
-        center_to_alignment = {}
+    previous_position = 0
+    depthCap = 0
+    for l in samtools_view_process.stdout:
+        l = l.split()
+        if l[0][0] == "@":
+            continue
 
-        if args.tensor_fn != "PIPE":
-            tensor_fpo = open(args.tensor_fn, "wb")
-            tensor_fp = subprocess.Popen(
-                shlex.split("gzip -c"), stdin=subprocess.PIPE, stdout=tensor_fpo, stderr=sys.stderr, bufsize=8388608
-            )
+        _QNAME = l[0]
+        FLAG = int(l[1])
+        _RNAME = l[2]
+        POS = int(l[3]) - 1  # switch from 1-base to 0-base to match sequence index
+        MQ = int(l[4])
+        CIGAR = l[5]
+        SEQ = l[9]
+        reference_position = POS
+        query_position = 0
+        STRAND = (16 == (FLAG & 16))
+
+        if MQ < args.minMQ:
+            continue
+
+        end_to_center = {}
+        active_set = set()
+
+        while candidate_position != -1 and candidate_position < (POS + len(SEQ) + 100000):
+            candidate_position = next(candidate_position_generator)
+
+        if previous_position != POS:
+            previous_position = POS
+            depthCap = 0
         else:
-            tensor_fp = TensorStdout(sys.stdout)
-
-        previous_position = 0
-        depthCap = 0
-        for l in samtools_view_process.stdout:
-            l = l.split()
-            if l[0][0] == "@":
+            depthCap += 1
+            if depthCap >= dcov:
+                #print >> sys.stderr, "Bypassing POS %d at depth %d\n" % (POS, depthCap)
                 continue
 
-            _QNAME = l[0]
-            FLAG = int(l[1])
-            _RNAME = l[2]
-            POS = int(l[3]) - 1  # switch from 1-base to 0-base to match sequence index
-            MQ = int(l[4])
-            CIGAR = l[5]
-            SEQ = l[9]
-            reference_position = POS
-            query_position = 0
-            STRAND = (16 == (FLAG & 16))
+        advance = 0
+        for c in str(CIGAR):
+            if available_slots == 0:
+                break
 
-            if MQ < args.minMQ:
+            if c.isdigit():
+                advance = advance * 10 + int(c)
                 continue
 
-            end_to_center = {}
-            active_set = set()
+            # soft clip
+            if c == "S":
+                query_position += advance
 
-            while candidate_position != -1 and candidate_position < (POS + len(SEQ) + 100000):
-                candidate_position = next(candidate_position_generator)
+            # match / mismatch
+            if c == "M" or c == "=" or c == "X":
+                for _ in xrange(advance):
+                    if reference_position in begin_to_end:
+                        rEnd, rCenter = begin_to_end[reference_position]
+                        if rCenter not in active_set:
+                            end_to_center[rEnd] = rCenter
+                            active_set.add(rCenter)
+                            center_to_alignment.setdefault(rCenter, [])
+                            center_to_alignment[rCenter].append([])
+                    for center in list(active_set):
+                        if available_slots == 0:
+                            continue
+                        available_slots -= 1
 
-            if previous_position != POS:
-                previous_position = POS
-                depthCap = 0
-            else:
-                depthCap += 1
-                if depthCap >= dcov:
-                    #print >> sys.stderr, "Bypassing POS %d at depth %d\n" % (POS, depthCap)
-                    continue
+                        center_to_alignment[center][-1].append((
+                            reference_position,
+                            0,
+                            reference_sequence[reference_position -
+                                                (0 if reference_start == None else (reference_start - 1))],
+                            SEQ[query_position],
+                            STRAND
+                        ))
+                    if reference_position in end_to_center:
+                        center = end_to_center[reference_position]
+                        active_set.remove(center)
+                    reference_position += 1
+                    query_position += 1
 
+            # insertion
+            if c == "I":
+                queryAdv = 0
+                for _ in xrange(advance):
+                    for center in list(active_set):
+                        if available_slots == 0:
+                            continue
+                        available_slots -= 1
+
+                        center_to_alignment[center][-1].append((
+                            reference_position,
+                            queryAdv,
+                            "-",
+                            SEQ[query_position],
+                            STRAND
+                        ))
+                    query_position += 1
+                    queryAdv += 1
+
+            # deletion
+            if c == "D":
+                for _ in xrange(advance):
+                    for center in list(active_set):
+                        if available_slots == 0:
+                            continue
+                        available_slots -= 1
+
+                        center_to_alignment[center][-1].append((
+                            reference_position,
+                            0,
+                            reference_sequence[reference_position -
+                                                (0 if reference_start == None else (reference_start - 1))],
+                            "-",
+                            STRAND
+                        ))
+                    if reference_position in begin_to_end:
+                        rEnd, rCenter = begin_to_end[reference_position]
+                        if rCenter not in active_set:
+                            end_to_center[rEnd] = rCenter
+                            active_set.add(rCenter)
+                            center_to_alignment.setdefault(rCenter, [])
+                            center_to_alignment[rCenter].append([])
+                    if reference_position in end_to_center:
+                        center = end_to_center[reference_position]
+                        active_set.remove(center)
+                    reference_position += 1
+
+            # reset advance
             advance = 0
-            for c in str(CIGAR):
-                if available_slots == 0:
-                    break
 
-                if c.isdigit():
-                    advance = advance * 10 + int(c)
+        if depthCap == 0:
+            for center in center_to_alignment.keys():
+                if center + (param.flankingBaseNum + 1) >= POS:
                     continue
+                l = generate_tensor(
+                    ctg_name, center_to_alignment[center], center, reference_sequence, reference_start, min_coverage
+                )
+                if l != None:
+                    tensor_fp.stdin.write(l)
+                    tensor_fp.stdin.write("\n")
+                available_slots += sum(len(i) for i in center_to_alignment[center])
+                #print >> sys.stderr, "POS %d: remaining slots %d" % (center, available_slots)
+                del center_to_alignment[center]
 
-                # soft clip
-                if c == "S":
-                    query_position += advance
+    for center in center_to_alignment.keys():
+        l = generate_tensor(
+            ctg_name, center_to_alignment[center], center, reference_sequence, reference_start, min_coverage
+        )
+        if l != None:
+            tensor_fp.stdin.write(l)
+            tensor_fp.stdin.write("\n")
 
-                # match / mismatch
-                if c == "M" or c == "=" or c == "X":
-                    for _ in xrange(advance):
-                        if reference_position in begin_to_end:
-                            rEnd, rCenter = begin_to_end[reference_position]
-                            if rCenter not in active_set:
-                                end_to_center[rEnd] = rCenter
-                                active_set.add(rCenter)
-                                center_to_alignment.setdefault(rCenter, [])
-                                center_to_alignment[rCenter].append([])
-                        for center in list(active_set):
-                            if available_slots == 0:
-                                continue
-                            available_slots -= 1
-
-                            center_to_alignment[center][-1].append((
-                                reference_position,
-                                0,
-                                reference_sequence[reference_position -
-                                                    (0 if reference_start == None else (reference_start - 1))],
-                                SEQ[query_position],
-                                STRAND
-                            ))
-                        if reference_position in end_to_center:
-                            center = end_to_center[reference_position]
-                            active_set.remove(center)
-                        reference_position += 1
-                        query_position += 1
-
-                # insertion
-                if c == "I":
-                    queryAdv = 0
-                    for _ in xrange(advance):
-                        for center in list(active_set):
-                            if available_slots == 0:
-                                continue
-                            available_slots -= 1
-
-                            center_to_alignment[center][-1].append((
-                                reference_position,
-                                queryAdv,
-                                "-",
-                                SEQ[query_position],
-                                STRAND
-                            ))
-                        query_position += 1
-                        queryAdv += 1
-
-                # deletion
-                if c == "D":
-                    for _ in xrange(advance):
-                        for center in list(active_set):
-                            if available_slots == 0:
-                                continue
-                            available_slots -= 1
-
-                            center_to_alignment[center][-1].append((
-                                reference_position,
-                                0,
-                                reference_sequence[reference_position -
-                                                    (0 if reference_start == None else (reference_start - 1))],
-                                "-",
-                                STRAND
-                            ))
-                        if reference_position in begin_to_end:
-                            rEnd, rCenter = begin_to_end[reference_position]
-                            if rCenter not in active_set:
-                                end_to_center[rEnd] = rCenter
-                                active_set.add(rCenter)
-                                center_to_alignment.setdefault(rCenter, [])
-                                center_to_alignment[rCenter].append([])
-                        if reference_position in end_to_center:
-                            center = end_to_center[reference_position]
-                            active_set.remove(center)
-                        reference_position += 1
-
-                # reset advance
-                advance = 0
-
-            if depthCap == 0:
-                for center in center_to_alignment.keys():
-                    if center + (param.flankingBaseNum + 1) >= POS:
-                        continue
-                    l = generate_tensor(
-                        ctg_name, center_to_alignment[center], center, reference_sequence, reference_start, min_coverage
-                    )
-                    if l != None:
-                        tensor_fp.stdin.write(l)
-                        tensor_fp.stdin.write("\n")
-                    available_slots += sum(len(i) for i in center_to_alignment[center])
-                    #print >> sys.stderr, "POS %d: remaining slots %d" % (center, available_slots)
-                    del center_to_alignment[center]
-
-        for center in center_to_alignment.keys():
-            l = generate_tensor(
-                ctg_name, center_to_alignment[center], center, reference_sequence, reference_start, min_coverage
-            )
-            if l != None:
-                tensor_fp.stdin.write(l)
-                tensor_fp.stdin.write("\n")
-
-        samtools_view_process.stdout.close()
-        samtools_view_process.wait()
-        if args.tensor_fn != "PIPE":
-            tensor_fp.stdin.close()
-            tensor_fp.wait()
-            tensor_fpo.close()
-    except:
-        samtools_view_process.terminate()
-        raise
+    samtools_view_process.stdout.close()
+    samtools_view_process.wait()
+    if args.tensor_fn != "PIPE":
+        tensor_fp.stdin.close()
+        tensor_fp.wait()
+        tensor_fpo.close()
 
 
 if __name__ == "__main__":

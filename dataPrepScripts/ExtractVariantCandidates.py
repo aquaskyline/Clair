@@ -118,147 +118,114 @@ def MakeCandidates(args):
 
     pileup = {}
     sweep = 0
-    try:
-        p2 = subprocess.Popen(shlex.split("%s view -F 2308 %s %s:%d-%d" % (args.samtools, args.bam_fn, args.ctgName, args.ctgStart, args.ctgEnd)), stdout=subprocess.PIPE, bufsize=8388608)\
-            if args.ctgStart != None and args.ctgEnd != None\
-            else subprocess.Popen(shlex.split("%s view -F 2308 %s %s" % (args.samtools, args.bam_fn, args.ctgName)), stdout=subprocess.PIPE, bufsize=8388608)
 
-        if args.can_fn != "PIPE":
-            # print "[INFO] create candidate file: {}".format(args.can_fn)
-            can_fpo = open(args.can_fn, "wb")
-            can_fp = subprocess.Popen(shlex.split("gzip -c"), stdin=subprocess.PIPE,
-                                      stdout=can_fpo, stderr=sys.stderr, bufsize=8388608)
-        else:
-            # print "[INFO] use standard output"
-            can_fp = CandidateStdout(sys.stdout)
 
-        # if is_pypy:
-        #    signal.signal(signal.SIGALRM, PypyGCCollect)
-        #    signal.alarm(60)
+    p2 = subprocess.Popen(shlex.split("%s view -F 2308 %s %s:%d-%d" % (args.samtools, args.bam_fn, args.ctgName, args.ctgStart, args.ctgEnd)), stdout=subprocess.PIPE, bufsize=8388608)\
+        if args.ctgStart != None and args.ctgEnd != None\
+        else subprocess.Popen(shlex.split("%s view -F 2308 %s %s" % (args.samtools, args.bam_fn, args.ctgName)), stdout=subprocess.PIPE, bufsize=8388608)
 
-        processedReads = 0
-        for l in p2.stdout:
-            l = l.strip().split()
-            if l[0][0] == "@":
+    if args.can_fn != "PIPE":
+        # print "[INFO] create candidate file: {}".format(args.can_fn)
+        can_fpo = open(args.can_fn, "wb")
+        can_fp = subprocess.Popen(shlex.split("gzip -c"), stdin=subprocess.PIPE,
+                                    stdout=can_fpo, stderr=sys.stderr, bufsize=8388608)
+    else:
+        # print "[INFO] use standard output"
+        can_fp = CandidateStdout(sys.stdout)
+
+    # if is_pypy:
+    #    signal.signal(signal.SIGALRM, PypyGCCollect)
+    #    signal.alarm(60)
+
+    processedReads = 0
+    for l in p2.stdout:
+        l = l.strip().split()
+        if l[0][0] == "@":
+            continue
+
+        _QNAME = l[0]
+        RNAME = l[2]
+        if RNAME != args.ctgName:
+            continue
+
+        _FLAG = int(l[1])
+        POS = int(l[3]) - 1  # switch from 1-base to 0-base to match sequence index
+        MQ = int(l[4])
+        CIGAR = l[5]
+        SEQ = l[9]
+        refPos = POS
+        queryPos = 0
+
+        if MQ < args.minMQ:
+            continue
+
+        skipBase = 0
+        totalAlnPos = 0
+        advance = 0
+        for c in str(CIGAR):
+            if c.isdigit():
+                advance = advance * 10 + int(c)
                 continue
-
-            _QNAME = l[0]
-            RNAME = l[2]
-            if RNAME != args.ctgName:
-                continue
-
-            _FLAG = int(l[1])
-            POS = int(l[3]) - 1  # switch from 1-base to 0-base to match sequence index
-            MQ = int(l[4])
-            CIGAR = l[5]
-            SEQ = l[9]
-            refPos = POS
-            queryPos = 0
-
-            if MQ < args.minMQ:
-                continue
-
-            skipBase = 0
-            totalAlnPos = 0
+            if c == "S":
+                skipBase += advance
+            totalAlnPos += advance
             advance = 0
-            for c in str(CIGAR):
-                if c.isdigit():
-                    advance = advance * 10 + int(c)
-                    continue
-                if c == "S":
-                    skipBase += advance
-                totalAlnPos += advance
-                advance = 0
 
-            if 1.0 - float(skipBase) / (totalAlnPos + 1) < 0.55:  # skip a read less than 55% aligned
+        if 1.0 - float(skipBase) / (totalAlnPos + 1) < 0.55:  # skip a read less than 55% aligned
+            continue
+
+        processedReads += 1
+        advance = 0
+        for c in str(CIGAR):
+            if c.isdigit():
+                advance = advance * 10 + int(c)
                 continue
 
-            processedReads += 1
+            if c == "S":
+                queryPos += advance
+
+            elif c == "M" or c == "=" or c == "X":
+                matches = []
+                for _ in range(advance):
+                    matches.append((refPos, SEQ[queryPos]))
+                    refPos += 1
+                    queryPos += 1
+                for pos, base in matches:
+                    pileup.setdefault(pos, {"A": 0, "C": 0, "G": 0, "T": 0, "I": 0, "D": 0, "N": 0})
+                    pileup[pos][base] += 1
+                del matches
+
+            elif c == "I":
+                pileup.setdefault(refPos-1, {"A": 0, "C": 0, "G": 0, "T": 0, "I": 0, "D": 0, "N": 0})
+                pileup[refPos-1]["I"] += 1
+                queryPos += advance
+
+            elif c == "D":
+                pileup.setdefault(refPos-1, {"A": 0, "C": 0, "G": 0, "T": 0, "I": 0, "D": 0, "N": 0})
+                pileup[refPos-1]["D"] += 1
+                refPos += advance
+
+            # reset advance
             advance = 0
-            for c in str(CIGAR):
-                if c.isdigit():
-                    advance = advance * 10 + int(c)
-                    continue
 
-                if c == "S":
-                    queryPos += advance
-
-                elif c == "M" or c == "=" or c == "X":
-                    matches = []
-                    for _ in range(advance):
-                        matches.append((refPos, SEQ[queryPos]))
-                        refPos += 1
-                        queryPos += 1
-                    for pos, base in matches:
-                        pileup.setdefault(pos, {"A": 0, "C": 0, "G": 0, "T": 0, "I": 0, "D": 0, "N": 0})
-                        pileup[pos][base] += 1
-                    del matches
-
-                elif c == "I":
-                    pileup.setdefault(refPos-1, {"A": 0, "C": 0, "G": 0, "T": 0, "I": 0, "D": 0, "N": 0})
-                    pileup[refPos-1]["I"] += 1
-                    queryPos += advance
-
-                elif c == "D":
-                    pileup.setdefault(refPos-1, {"A": 0, "C": 0, "G": 0, "T": 0, "I": 0, "D": 0, "N": 0})
-                    pileup[refPos-1]["D"] += 1
-                    refPos += advance
-
-                # reset advance
-                advance = 0
-
-            while sweep < POS:
-                flag = pileup.get(sweep)
-                if flag is None:
-                    sweep += 1
-                    continue
-                baseCount = pileup[sweep].items()
-                refBase = refSeq[sweep - (0 if args.refStart == None else (args.refStart - 1))]
-                out = None
-                outputFlag = 0
-                if args.ctgStart != None and args.ctgEnd != None:
-                    if sweep >= args.ctgStart and sweep <= args.ctgEnd:
-                        if args.bed_fn != None:
-                            if args.ctgName in tree and len(tree[args.ctgName].search(sweep)) != 0:
-                                outputFlag = 1
-                        else:
-                            outputFlag = 1
-                elif args.bed_fn != None:
-                    if args.ctgName in tree and len(tree[args.ctgName].search(sweep)) != 0:
-                        outputFlag = 1
-                else:
-                    outputFlag = 1
-                if args.gen4Training == True:
-                    if outputFlag == 1:
-                        if random.uniform(0, 1) > args.outputProb:
-                            outputFlag = 0
-                if outputFlag == 1:
-                    out = OutputCandidate(args.ctgName, sweep, baseCount, refBase, args.minCoverage, args.threshold)
-                if out != None:
-                    # print "[INFO] output: {}".format(can_fp.stdin)
-                    _totalCount, outline = out
-                    can_fp.stdin.write(outline)
-                    can_fp.stdin.write("\n")
-                del pileup[sweep]
+        while sweep < POS:
+            flag = pileup.get(sweep)
+            if flag is None:
                 sweep += 1
-
-        # check remaining bases
-        remainder = pileup.keys()
-        remainder.sort()
-        for pos in remainder:
-            baseCount = pileup[pos].items()
-            refBase = refSeq[pos - (0 if args.refStart == None else (args.refStart - 1))]
+                continue
+            baseCount = pileup[sweep].items()
+            refBase = refSeq[sweep - (0 if args.refStart == None else (args.refStart - 1))]
             out = None
             outputFlag = 0
             if args.ctgStart != None and args.ctgEnd != None:
-                if pos >= args.ctgStart and pos <= args.ctgEnd:
+                if sweep >= args.ctgStart and sweep <= args.ctgEnd:
                     if args.bed_fn != None:
-                        if args.ctgName in tree and len(tree[args.ctgName].search(pos)) != 0:
+                        if args.ctgName in tree and len(tree[args.ctgName].search(sweep)) != 0:
                             outputFlag = 1
                     else:
                         outputFlag = 1
             elif args.bed_fn != None:
-                if args.ctgName in tree and len(tree[args.ctgName].search(pos)) != 0:
+                if args.ctgName in tree and len(tree[args.ctgName].search(sweep)) != 0:
                     outputFlag = 1
             else:
                 outputFlag = 1
@@ -267,26 +234,57 @@ def MakeCandidates(args):
                     if random.uniform(0, 1) > args.outputProb:
                         outputFlag = 0
             if outputFlag == 1:
-                out = OutputCandidate(args.ctgName, pos, baseCount, refBase, args.minCoverage, args.threshold)
+                out = OutputCandidate(args.ctgName, sweep, baseCount, refBase, args.minCoverage, args.threshold)
             if out != None:
+                # print "[INFO] output: {}".format(can_fp.stdin)
                 _totalCount, outline = out
                 can_fp.stdin.write(outline)
                 can_fp.stdin.write("\n")
+            del pileup[sweep]
+            sweep += 1
 
-        p2.stdout.close()
-        p2.wait()
-        if args.can_fn != "PIPE":
-            can_fp.stdin.close()
-            can_fp.wait()
-            can_fpo.close()
+    # check remaining bases
+    remainder = pileup.keys()
+    remainder.sort()
+    for pos in remainder:
+        baseCount = pileup[pos].items()
+        refBase = refSeq[pos - (0 if args.refStart == None else (args.refStart - 1))]
+        out = None
+        outputFlag = 0
+        if args.ctgStart != None and args.ctgEnd != None:
+            if pos >= args.ctgStart and pos <= args.ctgEnd:
+                if args.bed_fn != None:
+                    if args.ctgName in tree and len(tree[args.ctgName].search(pos)) != 0:
+                        outputFlag = 1
+                else:
+                    outputFlag = 1
+        elif args.bed_fn != None:
+            if args.ctgName in tree and len(tree[args.ctgName].search(pos)) != 0:
+                outputFlag = 1
+        else:
+            outputFlag = 1
+        if args.gen4Training == True:
+            if outputFlag == 1:
+                if random.uniform(0, 1) > args.outputProb:
+                    outputFlag = 0
+        if outputFlag == 1:
+            out = OutputCandidate(args.ctgName, pos, baseCount, refBase, args.minCoverage, args.threshold)
+        if out != None:
+            _totalCount, outline = out
+            can_fp.stdin.write(outline)
+            can_fp.stdin.write("\n")
 
-        if processedReads == 0:
-            print >> sys.stderr, "No read has been process, either the genome region you specified has no read cover, or please check the correctness of your BAM input (%s)." % (
-                args.bam_fn)
-            sys.exit(0)
-    except:
-        p2.terminate()
-        # raise
+    p2.stdout.close()
+    p2.wait()
+    if args.can_fn != "PIPE":
+        can_fp.stdin.close()
+        can_fp.wait()
+        can_fpo.close()
+
+    if processedReads == 0:
+        print >> sys.stderr, "No read has been process, either the genome region you specified has no read cover, or please check the correctness of your BAM input (%s)." % (
+            args.bam_fn)
+        sys.exit(0)
 
 
 if __name__ == "__main__":
