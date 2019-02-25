@@ -643,7 +643,7 @@ class Clair(object):
         """
         Initialize the model by running the init_op and create the summary writer
         """
-        self.current_summary_writer = tf.summary.FileWriter('logs', self.session.graph)
+        # self.current_summary_writer = tf.summary.FileWriter('logs', self.session.graph)
         # print("Preparing to run init")
         self.session.run(self.init_op)
 
@@ -890,10 +890,11 @@ class Clair(object):
 
         returns: A tf.summary.FileWriter object
         """
-        if hasattr(self, "current_summary_writer"):
-            self.current_summary_writer.close()
-        self.current_summary_writer = tf.summary.FileWriter(logs_path, graph=self.graph)
-        return self.current_summary_writer
+        # if hasattr(self, "current_summary_writer"):
+        #     self.current_summary_writer.close()
+        # self.current_summary_writer = tf.summary.FileWriter(logs_path, graph=self.graph)
+        # return self.current_summary_writer
+        return None
 
     def set_task_loss_weights(self, task_loss_weights=[1, 1, 1, 1, 1]):
         """
@@ -964,8 +965,8 @@ class Clair(object):
             return '\n'.join(return_list)
 
     def __del__(self):
-        if hasattr(self, "current_summary_writer"):
-            self.current_summary_writer.close()
+        # if hasattr(self, "current_summary_writer"):
+        #     self.current_summary_writer.close()
         self.session.close()
 
 

@@ -6,12 +6,14 @@ import shlex
 import argparse
 import param
 
-majorContigs = {"chr"+str(a) for a in range(0,23)+["X", "Y"]}.union({str(a) for a in range(0,23)+["X", "Y"]})
+majorContigs = {"chr"+str(a) for a in range(0, 23)+["X", "Y"]}.union({str(a) for a in range(0, 23)+["X", "Y"]})
+
 
 def CheckFileExist(fn, sfx=""):
     if not os.path.isfile(fn+sfx):
         sys.exit("Error: %s not found" % (fn+sfx))
     return os.path.abspath(fn)
+
 
 def CheckCmdExist(cmd):
     try:
@@ -19,6 +21,7 @@ def CheckCmdExist(cmd):
     except:
         sys.exit("Error: %s executable not found" % (cmd))
     return cmd
+
 
 def Run(args):
     basedir = os.path.dirname(__file__)
@@ -50,12 +53,17 @@ def Run(args):
     else:
         qual = ""
 
+    if args.log_path:
+        log_path = "--log_path {}".format(args.log_path)
+    else:
+        log_path = ""
+
     includingAllContigs = args.includingAllContigs
     refChunkSize = args.refChunkSize
 
     tree = {}
     if bed_fn != None:
-        bed_fp = subprocess.Popen(shlex.split("gzip -fdc %s" % (bed_fn) ), stdout=subprocess.PIPE, bufsize=8388608)
+        bed_fp = subprocess.Popen(shlex.split("gzip -fdc %s" % (bed_fn)), stdout=subprocess.PIPE, bufsize=8388608)
         for row in bed_fp.stdout:
             row = row.strip().split()
             name = row[0]
@@ -63,7 +71,8 @@ def Run(args):
                 tree[name] = intervaltree.IntervalTree()
             begin = int(row[1])
             end = int(row[2])-1
-            if end == begin: end += 1
+            if end == begin:
+                end += 1
             tree[name].addi(begin, end)
         bed_fp.stdout.close()
         bed_fp.wait()
@@ -89,92 +98,94 @@ def Run(args):
                 if chromName in tree:
                     if len(tree[chromName].search(start, end)) != 0:
                         if args.activation_only:
-                            print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --bed_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s --activation_only --log_path %s --max_plot %d --parallel_level %d --workers %d %s %s" %
-                                (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, bed_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, args.log_path, args.max_plot, args.parallel_level, args.workers, qual, "--fast_plotting" if args.fast_plotting else "") )
+                            print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --bed_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s --activation_only %s --max_plot %d --parallel_level %d --workers %d %s %s" %
+                                  (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, bed_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, log_path, args.max_plot, args.parallel_level, args.workers, qual, "--fast_plotting" if args.fast_plotting else ""))
                         else:
-                            print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --bed_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s %s" % (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, bed_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, qual) )
+                            print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --bed_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s %s" % (
+                                callVarBamBin, chkpnt_fn, ref_fn, bam_fn, bed_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, qual))
             else:
                 if args.activation_only:
-                    print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s --activation_only --log_path %s --max_plot %d --parallel_level %d --workers %d %s %s" %
-                        (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, args.log_path, args.max_plot, args.parallel_level, args.workers, qual, "--fast_plotting" if args.fast_plotting else "") )
+                    print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s --activation_only %s --max_plot %d --parallel_level %d --workers %d %s %s" %
+                          (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, log_path, args.max_plot, args.parallel_level, args.workers, qual, "--fast_plotting" if args.fast_plotting else ""))
                 else:
-                    print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s %s" % (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, qual) )
+                    print("python %s --chkpnt_fn %s --ref_fn %s --bam_fn %s --ctgName %s --ctgStart %d --ctgEnd %d --call_fn %s --threshold %f --minCoverage %f --pypy %s --samtools %s --delay %d --threads %d --sampleName %s %s %s %s" %
+                          (callVarBamBin, chkpnt_fn, ref_fn, bam_fn, chromName, regionStart, end, output_fn, threshold, minCoverage, pypyBin, samtoolsBin, delay, threads, sampleName, vcf_fn, considerleftedge, qual))
             regionStart = end
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-            description="Create commands for calling variants in parallel using a trained Clair model and a BAM file" )
+        description="Create commands for calling variants in parallel using a trained Clair model and a BAM file")
 
-    parser.add_argument('--chkpnt_fn', type=str, default = None,
-            help="Input a Clair model")
+    parser.add_argument('--chkpnt_fn', type=str, default=None,
+                        help="Input a Clair model")
 
     parser.add_argument('--ref_fn', type=str, default="ref.fa",
-            help="Reference fasta file input, default: %(default)s")
+                        help="Reference fasta file input, default: %(default)s")
 
     parser.add_argument('--bed_fn', type=str, default=None,
-            help="Call variant only in these regions, optional, default: whole genome")
+                        help="Call variant only in these regions, optional, default: whole genome")
 
     parser.add_argument('--refChunkSize', type=int, default=10000000,
-            help="Divide job with smaller genome chunk size for parallelism, default: %(default)s")
+                        help="Divide job with smaller genome chunk size for parallelism, default: %(default)s")
 
     parser.add_argument('--bam_fn', type=str, default="bam.bam",
-            help="BAM file input, default: %(default)s")
+                        help="BAM file input, default: %(default)s")
 
     parser.add_argument('--vcf_fn', type=str, default=None,
-            help="Candidate sites VCF file input, if provided, variants will only be called at the sites in the VCF file,  default: %(default)s")
+                        help="Candidate sites VCF file input, if provided, variants will only be called at the sites in the VCF file,  default: %(default)s")
 
-    parser.add_argument('--output_prefix', type=str, default = None,
-            help="Output prefix")
+    parser.add_argument('--output_prefix', type=str, default=None,
+                        help="Output prefix")
 
     parser.add_argument('--includingAllContigs', type=param.str2bool, nargs='?', const=True, default=False,
-            help="Call variants on all contigs, default: chr{1..22,X,Y,M,MT} and {1..22,X,Y,MT}")
+                        help="Call variants on all contigs, default: chr{1..22,X,Y,M,MT} and {1..22,X,Y,MT}")
 
-    parser.add_argument('--tensorflowThreads', type=int, default = 4,
-            help="Number of threads per tensorflow job, default: %(default)s")
+    parser.add_argument('--tensorflowThreads', type=int, default=4,
+                        help="Number of threads per tensorflow job, default: %(default)s")
 
     parser.add_argument('--threshold', type=float, default=0.2,
-            help="Minimum allele frequence of the 1st non-reference allele for a site to be considered as a condidate site, default: %(default)f")
+                        help="Minimum allele frequence of the 1st non-reference allele for a site to be considered as a condidate site, default: %(default)f")
 
     parser.add_argument('--minCoverage', type=float, default=4,
-            help="Minimum coverage required to call a variant, default: %(default)d")
+                        help="Minimum coverage required to call a variant, default: %(default)d")
 
-    parser.add_argument('--qual', type=int, default = None,
-             help="If set, variant with equal or higher quality will be marked PASS, or LowQual otherwise, optional")
+    parser.add_argument('--qual', type=int, default=None,
+                        help="If set, variant with equal or higher quality will be marked PASS, or LowQual otherwise, optional")
 
-    parser.add_argument('--sampleName', type=str, default = "SAMPLE",
-            help="Define the sample name to be shown in the VCF file")
+    parser.add_argument('--sampleName', type=str, default="SAMPLE",
+                        help="Define the sample name to be shown in the VCF file")
 
     parser.add_argument('--considerleftedge', type=param.str2bool, nargs='?', const=True, default=True,
-            help="Count the left-most base-pairs of a read for coverage even if the starting position of a read is after the starting position of a tensor, default: %(default)s")
+                        help="Count the left-most base-pairs of a read for coverage even if the starting position of a read is after the starting position of a tensor, default: %(default)s")
 
     parser.add_argument('--samtools', type=str, default="samtools",
-            help="Path to the 'samtools', default: %(default)s")
+                        help="Path to the 'samtools', default: %(default)s")
 
     parser.add_argument('--pypy', type=str, default="pypy",
-            help="Path to the 'pypy', default: %(default)s")
+                        help="Path to the 'pypy', default: %(default)s")
 
-    parser.add_argument('--delay', type=int, default = 10,
-            help="Wait a short while for no more than %(default)s to start the job. This is to avoid starting multiple jobs simultaneously that might use up the maximum number of threads allowed, because Tensorflow will create more threads than needed at the beginning of running the program.")
+    parser.add_argument('--delay', type=int, default=10,
+                        help="Wait a short while for no more than %(default)s to start the job. This is to avoid starting multiple jobs simultaneously that might use up the maximum number of threads allowed, because Tensorflow will create more threads than needed at the beginning of running the program.")
 
     parser.add_argument('--activation_only', action='store_true',
-            help="Output activation only, no prediction")
+                        help="Output activation only, no prediction")
 
-    parser.add_argument('--max_plot', type=int, default = 10,
-            help="The maximum number of plots output, negative number means no limit (plot all), default: %(default)s")
+    parser.add_argument('--max_plot', type=int, default=10,
+                        help="The maximum number of plots output, negative number means no limit (plot all), default: %(default)s")
 
-    parser.add_argument('--log_path', type=str, default = "logs",
-            help="The path for tensorflow logging, default: %(default)s")
+    parser.add_argument('--log_path', type=str, nargs='?', default=None,
+                        help="The path for tensorflow logging, default: %(default)s")
 
-    parser.add_argument('-p', '--parallel_level', type=int, default = 2,
-            help="The level of parallelism in plotting (currently available: 0, 2), default: %(default)s")
+    parser.add_argument('-p', '--parallel_level', type=int, default=2,
+                        help="The level of parallelism in plotting (currently available: 0, 2), default: %(default)s")
 
-    parser.add_argument('-w', '--workers', type=int, default = 8,
-            help="The number of workers in plotting, default: %(default)s")
+    parser.add_argument('-w', '--workers', type=int, default=8,
+                        help="The number of workers in plotting, default: %(default)s")
 
     parser.add_argument('--fast_plotting', action='store_true',
-            help="Enable fast plotting.")
+                        help="Enable fast plotting.")
 
     args = parser.parse_args()
 

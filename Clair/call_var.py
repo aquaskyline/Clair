@@ -309,7 +309,13 @@ def print_vcf_header(args, call_fh):
 
 
 def log_activation(args, m, utils):
+    if args.log_path is None:
+        return
+
     summary_writer = m.get_summary_file_writer(args.log_path)
+
+    if summary_writer is None:
+        return
 
     tensorGenerator = utils.GetTensor(args.tensor_fn, param.predictBatchSize)
     logging.info("Plotting activations ...")
@@ -425,7 +431,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_plot', type=int, default=10,
                         help="The maximum number of plots output, negative number means no limit (plot all), default: %(default)s")
 
-    parser.add_argument('--log_path', type=str, default="logs",
+    parser.add_argument('--log_path', type=str, nargs='?', default=None,
                         help="The path for tensorflow logging, default: %(default)s")
 
     parser.add_argument('-p', '--parallel_level', type=int, default=2,
