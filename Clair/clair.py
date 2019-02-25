@@ -124,7 +124,7 @@ class Clair(object):
             tensor_transform_function=lambda X, Y, phase: (X, Y)
         )
 
-        print("This is Clair")
+        # print("This is Clair")
 
         # Getting parameters from the param.py file
         params_from_file = param.get_model_parameters()
@@ -134,7 +134,7 @@ class Clair(object):
                 params[key] = value
             else:
                 print("Info: the parameter %s, with value %s is not supported" % (key, value))
-        print(sorted(params.items()))
+        # print(sorted(params.items()))
 
         # Extract the values from the params dictionary
         self.input_shape = params['input_shape']
@@ -181,7 +181,7 @@ class Clair(object):
         self.output_label_split = [self.output_base_change_shape, self.output_zygosity_shape,
                                    self.output_variant_type_shape, self.output_indel_length_shape]
 
-        print(self.input_shape)
+        # print(self.input_shape)
 
         tf.set_random_seed(param.RANDOM_SEED)
         self.g = tf.Graph()
@@ -290,7 +290,7 @@ class Clair(object):
                 outputs, output_states = lstm(inputs)
                 return outputs, output_states
 
-            print("[INFO] GPU not available")
+            # print("[INFO] GPU not available")
             if direction == "bidirectional":
                 def single_cell_generator():
                     return tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(num_units)
@@ -384,7 +384,7 @@ class Clair(object):
                     self.X_flattened_2D, [1, 0, 2], name="X_flattened_2D_transposed")
 
                 is_gpu_available = len(Clair.get_available_gpus()) > 0
-                print("is_gpu_available:", is_gpu_available)
+                # print("is_gpu_available:", is_gpu_available)
                 self.LSTM1, self.LSTM1_state = Clair.adaptive_LSTM_layer(
                     inputs=self.X_flattened_2D_transposed,
                     num_units=self.LSTM1_num_units,
@@ -644,7 +644,7 @@ class Clair(object):
         Initialize the model by running the init_op and create the summary writer
         """
         self.current_summary_writer = tf.summary.FileWriter('logs', self.session.graph)
-        print("Preparing to run init")
+        # print("Preparing to run init")
         self.session.run(self.init_op)
 
     def get_summary_op_factory(self, render_function, name="Render", *args_factory, **kwargs_factory):
