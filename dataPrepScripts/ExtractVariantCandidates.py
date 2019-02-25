@@ -286,7 +286,7 @@ def MakeCandidates(args):
             sys.exit(0)
     except:
         p2.terminate()
-        raise
+        # raise
 
 
 if __name__ == "__main__":
