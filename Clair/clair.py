@@ -187,9 +187,14 @@ class Clair(object):
         self.g = tf.Graph()
         self._build_graph()
 
+        print("[INFO] Using %d CPU threads" % (param.NUM_THREADS))
+        self.netcfg = tf.ConfigProto()
+        self.netcfg.intra_op_parallelism_threads = param.NUM_THREADS
+        self.netcfg.inter_op_parallelism_threads = param.NUM_THREADS
+
         self.session = tf.Session(
             graph=self.g,
-            config=tf.ConfigProto(intra_op_parallelism_threads=param.NUM_THREADS)
+            config=self.netcfg
         )
 
     @staticmethod
@@ -618,26 +623,25 @@ class Clair(object):
             self.loss = self.total_loss
 
             # Getting the total number of traininable parameters
-
-            total_parameters = 0
-            for variable in tf.trainable_variables():
+            #total_parameters = 0
+            #for variable in tf.trainable_variables():
                 # shape is an array of tf.Dimension
-                shape = variable.get_shape()
+                #shape = variable.get_shape()
                 # print(variable.name, shape)
                 # print(len(shape))
-                variable_parameters = 1
-                try:
-                    for dim in shape:
+                #variable_parameters = 1
+                #try:
+                    #for dim in shape:
                         # print(dim)
-                        variable_parameters *= dim.value
-                    total_parameters += variable_parameters
-                except ValueError as ve:
+                        #variable_parameters *= dim.value
+                    #total_parameters += variable_parameters
+                #except ValueError as ve:
                     # if the shape cannot be obtained, (e.g. opaque operators)
-                    print("Variable {:s} has unknown shape.".format(variable.name))
-                    print(ve.message)
+                    #print("Variable {:s} has unknown shape.".format(variable.name))
+                    #print(ve.message)
                 # print(variable_parameters)
 
-            print("Total Trainable Parameters: " + str(total_parameters))
+            #print("Total Trainable Parameters: " + str(total_parameters))
 
     def init(self):
         """
