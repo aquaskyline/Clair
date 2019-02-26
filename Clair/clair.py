@@ -1,6 +1,3 @@
-# from mpl_toolkits.axes_grid1 import make_axes_locatable
-# import matplotlib.ticker as mticker
-# import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 import numpy as np
@@ -14,11 +11,6 @@ import param
 import math
 from collections import defaultdict
 import multiprocessing
-# import imageio
-
-# import matplotlib as mpl
-# mpl.use('Agg')
-
 
 class Clair(object):
     """
@@ -124,9 +116,7 @@ class Clair(object):
             tensor_transform_function=lambda X, Y, phase: (X, Y)
         )
 
-        # print("This is Clair")
-
-        # Getting parameters from the param.py file
+        # Getting other parameters from the param.py file
         params_from_file = param.get_model_parameters()
         params.update(params_from_file)
         for key, value in kwargs.items():
@@ -1023,7 +1013,7 @@ class FunctionCallConsumer(multiprocessing.Process):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Clair (Variant caller)")
+    parser = argparse.ArgumentParser(description="Clair Model")
 
     parser.add_argument('-v', '--variables', type=str, default=None,
                         help="Print variables matching the regular expression. default: %(default)s")

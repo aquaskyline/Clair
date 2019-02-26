@@ -23,15 +23,21 @@ inferred_indel_length_minimum_allele_frequency = 0.125
 
 
 def Run(args):
-    logging.info("Loading model ...")
+    utils.setup_environment()
 
-    utils.SetupEnv()
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
     if args.threads == None:
         if args.tensor_fn == "PIPE":
             param.NUM_THREADS = 4
     else:
         param.NUM_THREADS = args.threads
+        param.NUM_THREADS -= 1
+        if param.NUM_THREADS < 1: param.NUM_THREADS = 1
 
     m = cv.Clair()
     m.init()

@@ -18,7 +18,7 @@ PREFIX_CHAR_STR = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 def SetupEnv():
     os.environ["CXX"] = "g++"
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-    blosc.set_nthreads(4)
+    blosc.set_nthreads(2)
     gc.enable()
 
 

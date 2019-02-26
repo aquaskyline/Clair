@@ -115,9 +115,9 @@ def Run(args):
     else:
         numCpus = args.threads if args.threads < multiprocessing.cpu_count() else multiprocessing.cpu_count()
     _cpuSet = ",".join(str(x) for x in random.sample(xrange(0, maxCpus), numCpus))
-    taskSet = "taskset -c %s"
+    taskSet = "taskset -c %s" % (_cpuSet)
     try:
-        subprocess.check_output("which %s" % (taskSet), shell=True)
+        subprocess.check_output("which %s" % ("taskset"), shell=True)
     except:
         taskSet = ""
 
@@ -158,6 +158,7 @@ def Run(args):
 
     signal.signal(signal.SIGALRM, CheckRtCode)
     signal.alarm(2)
+
     try:
         c.CVInstance.wait()
         c.CTInstance.stdout.close()
