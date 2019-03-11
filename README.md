@@ -21,5 +21,6 @@ Please download models from [here](http://www.bio8.cs.hku.hk/clair/models/).
 Folder | Tech | Sample used | Depth used
 --- | :---: | :---: | :---: |
 pacbio/rsii | PacBio RSII | HG001,2,3,4 | "Full depth of each sample" x {0.1,0.2,0.4,0.6,0.8,1.0} |
-pacbio/ccs | PacBio CCS 15k | HG002 | "Full depth" x {0.1,0.2 ..., 0.9} |
-ont/r94 | ONT R9.4 (no flip-flop) | HG001 | "Full depth" x {0.1,0.2 ..., 0.9} |
+pacbio/ccs | PacBio CCS 15k | HG002 | ~28-fold x {0.1, 0.2 ..., 0.9} |
+ont/r94 | ONT R9.4 (no flip-flop) | HG001 | ~37-fold x {0.1, 0.2 ..., 0.9} |
+ont/r94-flipflop | ONT R9.4 (flip-flop) | HG001 | ~150-fold x 0.7<sup>{0,1 ..., 9}</sup>
