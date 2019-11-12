@@ -6,7 +6,9 @@ Email: rbluo@cs.hku.hk
 ***
 
 ## Introduction
-__Clair__ is the successor of [Clairvoyante](https://github.com/aquaskyline/Clairvoyante). The usage of Clair is almost identical to Clairvoyante. Please refer to the [README](https://github.com/aquaskyline/Clairvoyante/blob/rbDev/README.md) in the Clairvoyante repo for more details.
+This is Clair v1, which was made available in Jan 2019. Please visit [v2, Nov 2019](https://github.com/HKU-BAL/Clair) for the latest version.
+
+__Clair__ is the successor of [Clairvoyante](https://github.com/aquaskyline/Clairvoyante).
 
 ## Usage
 ```shell
