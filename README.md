@@ -18,7 +18,7 @@ cd Clair
 ```
 
 ## Models
-Please download models from [here](http://www.bio8.cs.hku.hk/clair/models/).
+Please download models from [here](http://www.bio8.cs.hku.hk/clair_v1/models/).
 
 Folder | Tech | Sample used | Depth used
 --- | :---: | :---: | :---: |
